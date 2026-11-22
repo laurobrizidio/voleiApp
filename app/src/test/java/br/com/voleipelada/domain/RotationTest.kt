@@ -33,6 +33,7 @@ class RotationTest {
 
     @Test fun limitedWinnerReturnsInConfiguredOrderAfterTwoPromotions() {
         val cases = listOf(
+            Triple(ReturnRule.FIRST_IN_QUEUE, 2, listOf(1L, 5L, 6L, 2L)),
             Triple(ReturnRule.AHEAD_OF_LOSER, 1, listOf(5L, 6L, 1L, 2L)),
             Triple(ReturnRule.END_OF_QUEUE, 1, listOf(5L, 6L, 2L, 1L)),
             Triple(ReturnRule.FIXED_POSITION, 1, listOf(1L, 5L, 6L, 2L)),
@@ -46,6 +47,26 @@ class RotationTest {
             assertEquals(0, next.team(1L)?.wins)
             assertEquals("Limite de vitórias", result.leftReason)
             assertEquals("Derrota", result.rightReason)
+        }
+    }
+
+    @Test fun defaultWinnerStaysAfterFirstWinAndHeadsQueueAfterSecondFromEitherSide() {
+        for (side in 0..1) {
+            val scores = if (side == 0) listOf(15, 12) else listOf(12, 15)
+            val firstMatch = game(4, leftWins = 0, rightWins = 0, score = scores)
+            val champion = firstMatch.court[side]
+            val firstLoser = firstMatch.court[1 - side]
+
+            val first = requireNotNull(rotate(firstMatch, 12_000)).next
+            assertEquals(champion, first.court[side])
+            assertEquals(1, first.team(champion)?.wins)
+            assertEquals(listOf(4L, 5L, 6L, firstLoser), first.queue)
+
+            val (second, result) = requireNotNull(rotate(first.copy(match = Match(scores = scores)), 13_000))
+            assertEquals(listOf(4L, 5L), second.court)
+            assertEquals(listOf(champion, 6L, firstLoser, 3L), second.queue)
+            assertEquals(0, second.team(champion)?.wins)
+            assertEquals("Limite de vitórias", listOf(result.leftReason, result.rightReason)[side])
         }
     }
 

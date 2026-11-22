@@ -67,19 +67,18 @@ private fun Session.computeRotation(now: Long): Rotation? {
             nextCourt[0] = nextQueue.removeAt(0)
             nextCourt[1] = nextQueue.removeAt(0)
             val loser = court[1 - winner]
-            if (rules.returnRule == ReturnRule.END_OF_QUEUE) {
-                nextQueue.add(loser)
-                nextQueue.add(court[winner])
-            } else {
-                val index = if (rules.returnRule == ReturnRule.FIXED_POSITION)
-                    (rules.returnPosition - 1).coerceIn(0, nextQueue.size) else nextQueue.size
-                nextQueue.add(index, court[winner])
-                nextQueue.add(loser)
+            val championPosition = when (rules.returnRule) {
+                ReturnRule.FIRST_IN_QUEUE -> 0
+                ReturnRule.FIXED_POSITION -> (rules.returnPosition - 1).coerceIn(0, nextQueue.size)
+                ReturnRule.AHEAD_OF_LOSER -> nextQueue.size
+                ReturnRule.END_OF_QUEUE -> nextQueue.size + 1
             }
+            nextQueue.add(loser)
+            nextQueue.add(championPosition, court[winner])
             reasons[winner] = "Limite de vitórias"
             reasons[1 - winner] = "Derrota"
         }
-        limit && (rules.returnRule == ReturnRule.END_OF_QUEUE ||
+        limit && (rules.returnRule == ReturnRule.FIRST_IN_QUEUE || rules.returnRule == ReturnRule.END_OF_QUEUE ||
             (rules.returnRule == ReturnRule.FIXED_POSITION && rules.returnPosition > 1)) ->
             replace(winner, "Limite de vitórias")
         else -> replace(1 - winner, "Derrota")

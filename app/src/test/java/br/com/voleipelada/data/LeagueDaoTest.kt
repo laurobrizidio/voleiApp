@@ -2,6 +2,7 @@ package br.com.voleipelada.data
 
 import androidx.room.Room
 import br.com.voleipelada.domain.PlayerSex
+import br.com.voleipelada.domain.ReturnRule
 import br.com.voleipelada.domain.ScorePointUseCase
 import br.com.voleipelada.domain.addPlayers
 import br.com.voleipelada.domain.editPlayer
@@ -131,6 +132,62 @@ class LeagueDaoTest {
         assertEquals(listOf(4L, 2L), league.session.queue)
         assertEquals(listOf(0, 0), league.session.match.scores)
         assertTrue(league.session.match.points.isEmpty())
+    }
+
+    @Test fun secondWinPersistsChampionAtFirstQueuePosition() = runBlocking {
+        val dao = db.dao()
+        dao.update { it.saveTeam(null, "Time Roxo", emptySet()) }
+        val extraTeam = dao.readLeague().session.queue.last()
+
+        repeat(2) { match ->
+            dao.update { it.copy(match = it.match.copy(scores = listOf(15, 12))) }
+            dao.finishMatchAndRotateTeams(dao.readLeague().session, (match + 1) * 1000L)
+        }
+
+        val league = dao.readLeague()
+        assertEquals(ReturnRule.FIRST_IN_QUEUE, league.session.rules.returnRule)
+        assertEquals(listOf(4L, extraTeam), league.session.court)
+        assertEquals(listOf(1L, 2L, 3L), league.session.queue)
+        assertEquals(0, league.session.team(1L)?.wins)
+        assertEquals(2, league.history.size)
+        val recorded = dao.history().first()
+        assertTrue(recorded.championExitedByStreakLimit)
+        assertTrue(recorded.exitReasonSummary.contains("Time Azul · Limite de vitórias · 1º na fila"))
+    }
+
+    @Test fun migrationUpdatesPreviousDefaultAndKeepsCustomReturnPolicy() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val policies = mapOf(ReturnRule.AHEAD_OF_LOSER to ReturnRule.FIRST_IN_QUEUE,
+            ReturnRule.FIXED_POSITION to ReturnRule.FIXED_POSITION)
+        for ((oldPolicy, expected) in policies) {
+            val path = "rotation-migration-${oldPolicy.name}-${System.nanoTime()}.db"
+            try {
+                val original = Room.databaseBuilder(context, LeagueDatabase::class.java, path)
+                    .addCallback(LeagueDatabase.seed).build()
+                try {
+                    val file = original.openHelper.writableDatabase
+                    file.execSQL("UPDATE rotation_rules SET championReturnPolicy = ?, targetPoints = 21",
+                        arrayOf(oldPolicy.name))
+                    file.version = 3
+                } finally {
+                    original.close()
+                }
+
+                val migrated = Room.databaseBuilder(context, LeagueDatabase::class.java, path)
+                    .addMigrations(LeagueDatabase.MIGRATION_3_4).build()
+                try {
+                    val session = migrated.dao().readLeague().session
+                    assertEquals(expected, session.rules.returnRule)
+                    assertEquals(21, session.rules.target)
+                    assertEquals(listOf(1L, 2L), session.court)
+                    assertEquals(listOf(3L, 4L), session.queue)
+                } finally {
+                    migrated.close()
+                }
+            } finally {
+                context.deleteDatabase(path)
+            }
+        }
     }
 
     @Test fun anIdenticalScorelessRematchCannotBeConfirmedTwice() = runBlocking {

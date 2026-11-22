@@ -4,3 +4,6 @@
 **/build/
 local.properties
 *.iml
+**/libs/**/*.jar
+**/libs/**/*.aar
+**/libs/**/*.so

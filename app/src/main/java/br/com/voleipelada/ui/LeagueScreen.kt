@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
@@ -33,9 +34,10 @@ import br.com.voleipelada.domain.*
 
 private enum class Section(val label: String, val icon: ImageVector) {
     SCORE("Placar", Icons.Default.Home),
-    TEAMS("Times e fila", Icons.Default.Person),
+    TEAMS("Times", Icons.Default.Person),
+    QUEUE("Fila", Icons.AutoMirrored.Filled.List),
     RULES("Regras", Icons.Default.Settings),
-    HISTORY("Histórico", Icons.AutoMirrored.Filled.List),
+    HISTORY("Histórico", Icons.Default.DateRange),
 }
 
 private val DarkColors = darkColorScheme(
@@ -166,6 +168,7 @@ fun LeagueScreen(
                                 Section.SCORE -> ScoreScreen(current.session, model, state.preferences, playSound, fullscreen,
                                     onFullscreen = { expandedScore = !expandedScore }, onTeams = { navigate(Section.TEAMS) })
                                 Section.TEAMS -> TeamsScreen(current.session, state.preferences.leagueName, model, onShareTeams)
+                                Section.QUEUE -> QueueScreen(current.session, model)
                                 Section.RULES -> RulesScreen(current.session.rules, state.preferences, model)
                                 Section.HISTORY -> HistoryScreen(current, model)
                             }

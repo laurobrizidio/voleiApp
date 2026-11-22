@@ -11,11 +11,21 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Database(entities = [TeamEntity::class, PlayerEntity::class, RotationRulesEntity::class,
-    MatchHistoryEntity::class, ActiveMatchStateEntity::class], version = 3, exportSchema = true)
+    MatchHistoryEntity::class, ActiveMatchStateEntity::class], version = 4, exportSchema = true)
 abstract class LeagueDatabase : RoomDatabase() {
     abstract fun dao(): LeagueDao
 
     companion object {
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE rotation_rules SET championReturnPolicy = 'FIRST_IN_QUEUE' " +
+                        "WHERE id = 1 AND championReturnPolicy = 'AHEAD_OF_LOSER' " +
+                        "AND maxConsecutiveWins = 2 AND fixedReturnPosition = 2 AND bothLeave = 0"
+                )
+            }
+        }
+
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE players ADD COLUMN sex TEXT NOT NULL DEFAULT 'UNSPECIFIED'")
@@ -49,7 +59,7 @@ abstract class LeagueDatabase : RoomDatabase() {
                 db.execSQL(
                     "INSERT INTO rotation_rules (id,targetPoints,winByTwo,maxPointsCap,maxConsecutiveWins," +
                         "championReturnPolicy,fixedReturnPosition,keepScreenOn,enableSoundAndHaptics,bothLeave,tieRule) " +
-                        "VALUES (1,15,1,NULL,2,'AHEAD_OF_LOSER',2,1,1,0,'BOTH_LEAVE')"
+                        "VALUES (1,15,1,NULL,2,'FIRST_IN_QUEUE',2,1,1,0,'BOTH_LEAVE')"
                 )
                 db.execSQL(
                     "INSERT INTO active_match_state (id,teamAId,teamBId,scoreA,scoreB,servingTeam,sidesSwapped," +

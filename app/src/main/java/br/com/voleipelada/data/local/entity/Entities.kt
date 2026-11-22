@@ -37,7 +37,7 @@ data class RotationRulesEntity(
     val winByTwo: Boolean = true,
     val maxPointsCap: Int? = null,
     val maxConsecutiveWins: Int? = 2,
-    val championReturnPolicy: String = "AHEAD_OF_LOSER",
+    val championReturnPolicy: String = "FIRST_IN_QUEUE",
     val fixedReturnPosition: Int = 2,
     val keepScreenOn: Boolean = true,
     val enableSoundAndHaptics: Boolean = true,

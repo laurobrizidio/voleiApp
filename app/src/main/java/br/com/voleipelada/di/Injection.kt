@@ -25,7 +25,7 @@ abstract class RepositoryModule {
         @Provides @Singleton
         fun database(@ApplicationContext context: Context): LeagueDatabase =
             Room.databaseBuilder(context, LeagueDatabase::class.java, "volei_pelada.db")
-                .addMigrations(LeagueDatabase.MIGRATION_1_2, LeagueDatabase.MIGRATION_2_3)
+                .addMigrations(LeagueDatabase.MIGRATION_1_2, LeagueDatabase.MIGRATION_2_3, LeagueDatabase.MIGRATION_3_4)
                 .addCallback(LeagueDatabase.seed)
                 .build()
     }

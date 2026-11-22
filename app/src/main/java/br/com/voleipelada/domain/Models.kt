@@ -31,7 +31,8 @@ enum class Experience(val label: String, val level: Int) {
 }
 
 enum class ReturnRule(val label: String) {
-    AHEAD_OF_LOSER("À frente do perdedor"), END_OF_QUEUE("Fim da fila"), FIXED_POSITION("Posição fixa")
+    FIRST_IN_QUEUE("Primeiro da fila"), AHEAD_OF_LOSER("À frente do perdedor"),
+    END_OF_QUEUE("Fim da fila"), FIXED_POSITION("Posição fixa")
 }
 
 enum class TieRule(val label: String) {
@@ -43,7 +44,7 @@ data class Rules(
     val winByTwo: Boolean = true,
     val cap: Int = 0,
     val winLimit: Int = 2,
-    val returnRule: ReturnRule = ReturnRule.AHEAD_OF_LOSER,
+    val returnRule: ReturnRule = ReturnRule.FIRST_IN_QUEUE,
     val returnPosition: Int = 2,
     val bothLeave: Boolean = false,
     val tieRule: TieRule = TieRule.BOTH_LEAVE,

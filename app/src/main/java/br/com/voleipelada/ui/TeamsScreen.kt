@@ -28,7 +28,7 @@ import br.com.voleipelada.domain.*
 @Composable
 fun TeamsScreen(session: Session, leagueName: String, model: LeagueViewModel, onShareTeams: (Session, String) -> Unit) {
     var showPlayers by rememberSaveable { mutableStateOf(false) }
-    Page("Times e fila") {
+    Page("Times") {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(selected = !showPlayers, onClick = { showPlayers = false },
                 shape = SegmentedButtonDefaults.itemShape(0, 2)) { Text("Equipes") }
@@ -50,7 +50,6 @@ private fun TeamsContent(session: Session, leagueName: String, model: LeagueView
     var adding by rememberSaveable { mutableStateOf(false) }
     var drawing by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf<Long?>(null) }
-    var substitute by rememberSaveable { mutableStateOf<Int?>(null) }
 
     Panel {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -79,26 +78,18 @@ private fun TeamsContent(session: Session, leagueName: String, model: LeagueView
         Spacer(Modifier.width(8.dp))
         Text("Compartilhar times como imagem")
     }
-    SectionTitle("Em quadra", session.court.size)
-    if (session.court.isEmpty()) Panel { Text("Nenhum time em quadra.") }
-    session.court.forEachIndexed { side, id ->
-        session.team(id)?.let { team ->
-            TeamPanel(team, session.roster(id), "Lado ${if (side == 0) "A" else "B"}",
-                edit = { editing = id }, remove = { removing = id }) { close ->
-                if (session.queue.isNotEmpty()) {
-                    DropdownMenuItem(text = { Text("Substituir") }, onClick = { close(); substitute = side })
-                }
-            }
+    SectionTitle("Equipes", session.teams.size)
+    if (session.teams.isEmpty()) Panel { Text("Nenhum time cadastrado.") }
+    session.teams.forEach { team ->
+        val status = when (session.court.indexOf(team.id)) {
+            0 -> "Em quadra · Lado A"
+            1 -> "Em quadra · Lado B"
+            else -> if (team.id in session.queue) "Na fila" else "Fora do rodízio"
         }
-    }
-    SectionTitle("Fila de espera", session.queue.size)
-    if (session.queue.isEmpty()) Panel { Text("A fila está vazia.") }
-    session.queue.forEachIndexed { index, id ->
-        session.team(id)?.let { team ->
-            TeamPanel(team, session.roster(id), "${index + 1}º na fila", { editing = id }, { removing = id }) { close ->
-                if (index > 0) DropdownMenuItem(text = { Text("Subir") }, onClick = { close(); model.move(id, -1) })
-                if (index < session.queue.lastIndex)
-                    DropdownMenuItem(text = { Text("Descer") }, onClick = { close(); model.move(id, 1) })
+        key(team.id) {
+            TeamPanel(team, session.roster(team.id), status) { close ->
+                DropdownMenuItem(text = { Text("Editar") }, onClick = { close(); editing = team.id })
+                DropdownMenuItem(text = { Text("Remover") }, onClick = { close(); removing = team.id })
             }
         }
     }
@@ -125,6 +116,39 @@ private fun TeamsContent(session: Session, leagueName: String, model: LeagueView
                 removing = null
             }) { Text("Remover") } }, dismissButton = { TextButton(onClick = { removing = null }) { Text("Cancelar") } })
     }
+}
+
+@Composable
+fun QueueScreen(session: Session, model: LeagueViewModel) {
+    var substitute by rememberSaveable { mutableStateOf<Int?>(null) }
+
+    Page("Fila") {
+        SectionTitle("Fila de espera", session.queue.size)
+        if (session.queue.isEmpty()) Panel { Text("A fila está vazia.") }
+        session.queue.forEachIndexed { index, id ->
+            val team = session.team(id) ?: return@forEachIndexed
+            key(id) {
+                TeamPanel(team, session.roster(id), "${index + 1}º na fila", hasActions = session.queue.size > 1) { close ->
+                    if (index > 0) DropdownMenuItem(text = { Text("Subir") }, onClick = { close(); model.move(id, -1) })
+                    if (index < session.queue.lastIndex)
+                        DropdownMenuItem(text = { Text("Descer") }, onClick = { close(); model.move(id, 1) })
+                }
+            }
+        }
+
+        SectionTitle("Em quadra", session.court.size)
+        if (session.court.isEmpty()) Panel { Text("Nenhum time em quadra.") }
+        session.court.forEachIndexed { side, id ->
+            val team = session.team(id) ?: return@forEachIndexed
+            key(id) {
+                TeamPanel(team, session.roster(id), "Lado ${if (side == 0) "A" else "B"}",
+                    hasActions = session.queue.isNotEmpty()) { close ->
+                    DropdownMenuItem(text = { Text("Substituir") }, onClick = { close(); substitute = side })
+                }
+            }
+        }
+    }
+
     substitute?.let { side ->
         AlertDialog(onDismissRequest = { substitute = null }, title = { Text("Substituir time em quadra") },
             text = {
@@ -140,7 +164,7 @@ private fun TeamsContent(session: Session, leagueName: String, model: LeagueView
 }
 
 @Composable
-private fun TeamPanel(team: Team, roster: List<Player>, status: String, edit: () -> Unit, remove: () -> Unit,
+private fun TeamPanel(team: Team, roster: List<Player>, status: String, hasActions: Boolean = true,
                       actions: @Composable (() -> Unit) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Panel {
@@ -150,12 +174,10 @@ private fun TeamPanel(team: Team, roster: List<Player>, status: String, edit: ()
                 Text(team.name, style = MaterialTheme.typography.titleMedium)
                 Text(status, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Box {
+            if (hasActions) Box {
                 IconButton(onClick = { expanded = true }) { Icon(Icons.Default.MoreVert, "Opções de ${team.name}") }
                 DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
                     actions { expanded = false }
-                    DropdownMenuItem(text = { Text("Editar") }, onClick = { expanded = false; edit() })
-                    DropdownMenuItem(text = { Text("Remover") }, onClick = { expanded = false; remove() })
                 }
             }
         }
