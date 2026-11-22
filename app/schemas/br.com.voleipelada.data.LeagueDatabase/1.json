@@ -1,0 +1,389 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "2a5f1d8108dcf2f38a80ae27e2c89496",
+    "entities": [
+      {
+        "tableName": "teams",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `colorHex` TEXT NOT NULL, `consecutiveWins` INTEGER NOT NULL, `status` TEXT NOT NULL, `queuePosition` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorHex",
+            "columnName": "colorHex",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "consecutiveWins",
+            "columnName": "consecutiveWins",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "queuePosition",
+            "columnName": "queuePosition",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "players",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `skillLevel` INTEGER NOT NULL, `isPresent` INTEGER NOT NULL, `assignedTeamId` INTEGER, FOREIGN KEY(`assignedTeamId`) REFERENCES `teams`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skillLevel",
+            "columnName": "skillLevel",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isPresent",
+            "columnName": "isPresent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "assignedTeamId",
+            "columnName": "assignedTeamId",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_players_assignedTeamId",
+            "unique": false,
+            "columnNames": [
+              "assignedTeamId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_players_assignedTeamId` ON `${TABLE_NAME}` (`assignedTeamId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "teams",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "assignedTeamId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "rotation_rules",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `targetPoints` INTEGER NOT NULL, `winByTwo` INTEGER NOT NULL, `maxPointsCap` INTEGER, `maxConsecutiveWins` INTEGER, `championReturnPolicy` TEXT NOT NULL, `fixedReturnPosition` INTEGER NOT NULL, `keepScreenOn` INTEGER NOT NULL, `enableSoundAndHaptics` INTEGER NOT NULL, `bothLeave` INTEGER NOT NULL, `tieRule` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "targetPoints",
+            "columnName": "targetPoints",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "winByTwo",
+            "columnName": "winByTwo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "maxPointsCap",
+            "columnName": "maxPointsCap",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "maxConsecutiveWins",
+            "columnName": "maxConsecutiveWins",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "championReturnPolicy",
+            "columnName": "championReturnPolicy",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fixedReturnPosition",
+            "columnName": "fixedReturnPosition",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "keepScreenOn",
+            "columnName": "keepScreenOn",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enableSoundAndHaptics",
+            "columnName": "enableSoundAndHaptics",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bothLeave",
+            "columnName": "bothLeave",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieRule",
+            "columnName": "tieRule",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "match_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `teamAId` INTEGER NOT NULL, `teamAName` TEXT NOT NULL, `teamAScore` INTEGER NOT NULL, `teamBId` INTEGER NOT NULL, `teamBName` TEXT NOT NULL, `teamBScore` INTEGER NOT NULL, `winnerTeamId` INTEGER, `loserTeamId` INTEGER, `championExitedByStreakLimit` INTEGER NOT NULL, `exitReasonSummary` TEXT NOT NULL, `durationSeconds` INTEGER NOT NULL, `finishedAt` INTEGER NOT NULL, `teamAReason` TEXT NOT NULL, `teamBReason` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamAId",
+            "columnName": "teamAId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamAName",
+            "columnName": "teamAName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamAScore",
+            "columnName": "teamAScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamBId",
+            "columnName": "teamBId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamBName",
+            "columnName": "teamBName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamBScore",
+            "columnName": "teamBScore",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "winnerTeamId",
+            "columnName": "winnerTeamId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "loserTeamId",
+            "columnName": "loserTeamId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "championExitedByStreakLimit",
+            "columnName": "championExitedByStreakLimit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "exitReasonSummary",
+            "columnName": "exitReasonSummary",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationSeconds",
+            "columnName": "durationSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "finishedAt",
+            "columnName": "finishedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamAReason",
+            "columnName": "teamAReason",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamBReason",
+            "columnName": "teamBReason",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "active_match_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `teamAId` INTEGER, `teamBId` INTEGER, `scoreA` INTEGER NOT NULL, `scoreB` INTEGER NOT NULL, `servingTeam` TEXT NOT NULL, `sidesSwapped` INTEGER NOT NULL, `elapsedSeconds` INTEGER NOT NULL, `elapsedRemainderMs` INTEGER NOT NULL, `startedAt` INTEGER, `pointHistoryStackJson` TEXT NOT NULL, `round` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "teamAId",
+            "columnName": "teamAId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "teamBId",
+            "columnName": "teamBId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "scoreA",
+            "columnName": "scoreA",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scoreB",
+            "columnName": "scoreB",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "servingTeam",
+            "columnName": "servingTeam",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sidesSwapped",
+            "columnName": "sidesSwapped",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elapsedSeconds",
+            "columnName": "elapsedSeconds",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elapsedRemainderMs",
+            "columnName": "elapsedRemainderMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "pointHistoryStackJson",
+            "columnName": "pointHistoryStackJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "round",
+            "columnName": "round",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2a5f1d8108dcf2f38a80ae27e2c89496')"
+    ]
+  }
+}

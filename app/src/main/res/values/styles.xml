@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Volei Pro</string>
+    <style name="Theme.Volei" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#FFFFFF</item>
+    </style>
+</resources>

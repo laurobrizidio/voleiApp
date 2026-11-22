@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vôlei Pelada Pro — Placar & Rodízio Inteligente</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Barlow Condensed para números esportivos -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tone.js para efeitos sonoros sintetizados opcionais (apito/ponto) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Barlow Condensed', 'sans-serif'],
+          },
+          colors: {
+            court: {
+              dark: '#090D16',
+              card: '#111827',
+              elevated: '#1E293B',
+              volleyBlue: '#1D4ED8',
+              volleyYellow: '#FACC15',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Ajustes finos para toque rápido e prevenção de zoom acidental no placar */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #090D16;
+      color: #F8FAFC;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .score-digit {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-variant-numeric: tabular-nums;
+      line-height: 0.9;
+    }
+    .touch-btn:active {
+      transform: scale(0.96);
+    }
+    /* Animação suave de entrada de modal */
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.92) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-pop-in {
+      animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    /* Custom scrollbar discreta */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090D16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col pb-24 md:pb-8 select-none">
+
+  <!-- ==================== CABEÇALHO SUPERIOR ==================== -->
+  <header class="sticky top-0 z-30 bg-[#090D16]/95 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <!-- Ícone SVG Bola de Vôlei -->
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 via-amber-400 to-blue-600 p-0.5 shadow-lg shadow-yellow-500/10 flex-shrink-0">
+          <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+            <svg class="w-6 h-6 text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M11.1 7.1a16.55 16.55 0 0 1 10.9 4"></path>
+              <path d="M12 12a12.6 12.6 0 0 1-8.7 5"></path>
+              <path d="M16.8 13.6a16.55 16.55 0 0 1-9 7.5"></path>
+              <path d="M20.7 17a12.8 12.8 0 0 0-8.7-5 13.3 13.3 0 0 1 0-10"></path>
+              <path d="M6.3 3.8a16.55 16.55 0 0 0 1.9 11.5"></path>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight text-white leading-none flex items-center gap-1.5">
+            VÔLEI PELADA <span class="text-yellow-400">PRO</span>
+          </h1>
+          <p id="header-rule-summary" class="text-[11px] sm:text-xs text-slate-400 font-medium mt-0.5 truncate max-w-[200px] sm:max-w-xs">
+            Set 15 pts • Sai após 2 vitórias
+          </p>
+        </div>
+      </div>
+
+      <!-- Ações Rápidas Header -->
+      <div class="flex items-center gap-2">
+        <!-- Botão de Som (Apito/Beep) -->
+        <button id="btn-toggle-sound" onclick="toggleSound()" title="Ativar/Desativar Som" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">
+          <svg id="icon-sound-on" class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+          </svg>
+          <svg id="icon-sound-off" class="w-5 h-5 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+          </svg>
+        </button>
+
+        <!-- Navegação Desktop (oculta no mobile, onde fica na barra inferior) -->
+        <nav class="hidden md:flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <button onclick="switchTab('placar')" data-tab="placar" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition">Placar</button>
+          <button onclick="switchTab('times')" data-tab="times" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition">Times & Fila</button>
+          <button onclick="switchTab('regras')" data-tab="regras" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition">Regras</button>
+          <button onclick="switchTab('historico')" data-tab="historico" class="nav-btn px-3.5 py-1.5 rounded-lg text-sm font-semibold transition">Histórico</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== BANNER DE NOTIFICAÇÃO / FEEDBACK ==================== -->
+  <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- ==================== CONTEÚDO PRINCIPAL ==================== -->
+  <main class="flex-1 w-full max-w-4xl mx-auto px-3 sm:px-4 pt-4">
+
+    <!-- ===================================================================== -->
+    <!-- ABA 1: PLACAR AO VIVO                                                 -->
+    <!-- ===================================================================== -->
+    <section id="tab-placar" class="tab-content space-y-4">
+
+      <!-- Barra de Info da Partida Atual & Cronômetro Opcional -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 shadow-md">
+        <div class="flex items-center gap-2">
+          <span class="px-2.5 py-1 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase tracking-wider">
+            Jogo #<span id="match-number">1</span>
+          </span>
+          <span id="set-target-badge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold">
+            Meta: 15 pts (Vai a 2)
+          </span>
+        </div>
+
+        <!-- Cronômetro opcional (útil quando há regra de empate/tempo) -->
+        <div class="flex items-center gap-2">
+          <div id="timer-box" class="flex items-center gap-1.5 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800">
+            <span id="timer-display" class="font-mono text-sm font-bold text-slate-200">00:00</span>
+            <button onclick="toggleTimer()" id="btn-timer-toggle" class="text-xs px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-yellow-400 font-semibold">
+              Iniciar
+            </button>
+            <button onclick="resetTimer()" title="Zerar tempo" class="text-xs text-slate-500 hover:text-slate-300 px-1">
+              ↺
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aviso caso falte time para jogar -->
+      <div id="not-enough-teams-alert" class="hidden bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 text-center space-y-3">
+        <p class="text-amber-300 font-bold text-base">Precisamos de pelo menos 2 times para iniciar a partida!</p>
+        <p class="text-slate-400 text-sm">Cadastre ou sorteie times na aba "Times & Fila" para liberar o placar.</p>
+        <button onclick="switchTab('times')" class="px-4 py-2.5 rounded-xl bg-yellow-400 text-slate-950 font-bold text-sm hover:bg-yellow-300 transition">
+          Ir para Times & Fila
+        </button>
+      </div>
+
+      <!-- ARENA DO PLACAR (TIME ESQUERDA VS TIME DIREITA) -->
+      <div id="scoreboard-arena" class="space-y-3">
+        <!-- Grid Responsivo: Lado a Lado no mobile e desktop -->
+        <div class="grid grid-cols-2 gap-2.5 sm:gap-4 items-stretch">
+
+          <!-- LADO ESQUERDO (COURT SLOT 0) -->
+          <div id="card-side-0" class="relative rounded-3xl bg-slate-900 border-2 border-slate-800 p-3 sm:p-5 flex flex-col justify-between shadow-xl transition-all duration-200">
+            <!-- Cabeçalho do Time -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-1">
+                <span id="badge-color-0" class="w-4 h-4 rounded-full flex-shrink-0 ring-2 ring-white/20"></span>
+                <!-- Indicador de Saque -->
+                <button onclick="setServe(0)" id="serve-btn-0" class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 transition">
+                  🏐 Sacando
+                </button>
+              </div>
+
+              <h2 id="name-side-0" class="text-base sm:text-xl font-extrabold text-white truncate leading-tight">
+                Time Azul
+              </h2>
+
+              <!-- Tag de Sequência de Vitórias / Status na Quadra -->
+              <div id="streak-tag-0" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 leading-tight">
+                Novo na quadra
+              </div>
+            </div>
+
+            <!-- Visor Gigante de Pontos (Tocável para +1) -->
+            <button onclick="addPoint(0, 1)" class="touch-btn my-3 sm:my-5 w-full py-5 sm:py-8 rounded-2xl bg-slate-950/80 hover:bg-slate-950 border border-slate-800/90 flex flex-col items-center justify-center relative group cursor-pointer focus:outline-none">
+              <span id="score-side-0" class="score-digit text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-tight">
+                0
+              </span>
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-slate-500 group-hover:text-yellow-400 mt-1 transition">
+                Toque +1 Ponto
+              </span>
+              <!-- Badge de Match Point / Set Point -->
+              <span id="setpoint-0" class="hidden absolute top-2 right-2 px-2 py-0.5 rounded-md bg-yellow-400 text-slate-950 text-[10px] font-black uppercase animate-pulse">
+                SET POINT
+              </span>
+            </button>
+
+            <!-- Botões de Ajuste (+1 e -1) -->
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="addPoint(0, -1)" class="touch-btn col-span-1 py-3 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 border border-slate-700 text-slate-300 font-extrabold text-lg flex items-center justify-center transition" aria-label="Remover 1 ponto">
+                -1
+              </button>
+              <button onclick="addPoint(0, 1)" class="touch-btn col-span-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-lg flex items-center justify-center shadow-lg shadow-emerald-950/50 transition" aria-label="Adicionar 1 ponto">
+                +1 PONTO
+              </button>
+            </div>
+          </div>
+
+          <!-- LADO DIREITO (COURT SLOT 1) -->
+          <div id="card-side-1" class="relative rounded-3xl bg-slate-900 border-2 border-slate-800 p-3 sm:p-5 flex flex-col justify-between shadow-xl transition-all duration-200">
+            <!-- Cabeçalho do Time -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between gap-1">
+                <span id="badge-color-1" class="w-4 h-4 rounded-full flex-shrink-0 ring-2 ring-white/20"></span>
+                <!-- Indicador de Saque -->
+                <button onclick="setServe(1)" id="serve-btn-1" class="px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide flex items-center gap-1 transition">
+                  🏐 Sacando
+                </button>
+              </div>
+
+              <h2 id="name-side-1" class="text-base sm:text-xl font-extrabold text-white truncate leading-tight">
+                Time Vermelho
+              </h2>
+
+              <!-- Tag de Sequência de Vitórias / Status na Quadra -->
+              <div id="streak-tag-1" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 leading-tight">
+                Novo na quadra
+              </div>
+            </div>
+
+            <!-- Visor Gigante de Pontos (Tocável para +1) -->
+            <button onclick="addPoint(1, 1)" class="touch-btn my-3 sm:my-5 w-full py-5 sm:py-8 rounded-2xl bg-slate-950/80 hover:bg-slate-950 border border-slate-800/90 flex flex-col items-center justify-center relative group cursor-pointer focus:outline-none">
+              <span id="score-side-1" class="score-digit text-7xl sm:text-8xl md:text-9xl font-black text-white tracking-tight">
+                0
+              </span>
+              <span class="text-[11px] font-semibold uppercase tracking-widest text-slate-500 group-hover:text-yellow-400 mt-1 transition">
+                Toque +1 Ponto
+              </span>
+              <!-- Badge de Set Point -->
+              <span id="setpoint-1" class="hidden absolute top-2 right-2 px-2 py-0.5 rounded-md bg-yellow-400 text-slate-950 text-[10px] font-black uppercase animate-pulse">
+                SET POINT
+              </span>
+            </button>
+
+            <!-- Botões de Ajuste (+1 e -1) -->
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="addPoint(1, -1)" class="touch-btn col-span-1 py-3 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 border border-slate-700 text-slate-300 font-extrabold text-lg flex items-center justify-center transition" aria-label="Remover 1 ponto">
+                -1
+              </button>
+              <button onclick="addPoint(1, 1)" class="touch-btn col-span-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-lg flex items-center justify-center shadow-lg shadow-emerald-950/50 transition" aria-label="Adicionar 1 ponto">
+                +1 PONTO
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Barra de Controles Rápidos da Partida -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          <button onclick="swapSides()" class="touch-btn py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition">
+            <span>⇄</span> Inverter Lados
+          </button>
+
+          <button onclick="resetCurrentScore()" class="touch-btn py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition">
+            <span>↺</span> Zerar Placar
+          </button>
+
+          <button onclick="openManualEndModal()" class="touch-btn col-span-2 py-2.5 px-3 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition">
+            <span>🏁</span> Encerrar / Aplicar Rodízio Manual
+          </button>
+        </div>
+
+        <!-- Preview dos Próximos da Fila (Resumo Rápido no Placar) -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              ⏳ Próximos na Fila de Espera
+            </span>
+            <button onclick="switchTab('times')" class="text-xs text-yellow-400 hover:underline font-semibold">
+              Gerenciar Fila →
+            </button>
+          </div>
+          <div id="scoreboard-queue-preview" class="flex items-center gap-2 overflow-x-auto pb-1">
+            <!-- Preenchido via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- ABA 2: TIMES & FILA DE ESPERA                                         -->
+    <!-- ===================================================================== -->
+    <section id="tab-times" class="tab-content hidden space-y-5">
+
+      <!-- Seção 1: Em Quadra vs Fila Atual -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Ordem de Jogo & Fila</h2>
+            <p class="text-xs text-slate-400">Reordene a fila ou troque quem está em quadra</p>
+          </div>
+          <span id="total-teams-badge" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-bold">
+            4 Times
+          </span>
+        </div>
+
+        <!-- Times em Quadra -->
+        <div class="space-y-2">
+          <div class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Em Quadra Agora
+          </div>
+          <div id="court-teams-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+
+        <!-- Fila de Espera -->
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-yellow-400">
+              Fila de Espera (1º entra no próximo jogo)
+            </span>
+          </div>
+          <div id="waiting-queue-list" class="space-y-2">
+            <!-- Renderizado via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção 2: Cadastrar Novo Time Manualmente -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+          <span>➕</span> Adicionar Novo Time
+        </h3>
+        <form onsubmit="handleAddTeam(event)" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Nome do Time</label>
+              <input type="text" id="new-team-name" placeholder="Ex: Time Laranja, Sem Camisa..." required
+                class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Cor do Colete</label>
+              <select id="new-team-color" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+                <option value="#3B82F6">🔵 Azul</option>
+                <option value="#EF4444">🔴 Vermelho</option>
+                <option value="#EAB308">🟡 Amarelo</option>
+                <option value="#10B981">🟢 Verde</option>
+                <option value="#F97316">🟠 Laranja</option>
+                <option value="#A855F7">🟣 Roxo</option>
+                <option value="#EC4899">🩷 Rosa</option>
+                <option value="#F8FAFC">⚪ Branco</option>
+                <option value="#475569">⚫ Preto / Cinza</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Jogadores (opcional, separados por vírgula)</label>
+            <input type="text" id="new-team-players" placeholder="Ex: Lucas, Mariana, Pedro, Bia"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+          </div>
+
+          <button type="submit" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-extrabold text-sm transition">
+            Cadastrar Time na Fila
+          </button>
+        </form>
+      </div>
+
+      <!-- Seção 3: Sorteador Automático de Times -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+              <span>🎲</span> Sorteador Automático de Pelada
+            </h3>
+            <p class="text-xs text-slate-400">Cole os nomes presentes (um por linha ou vírgula) para montar os times</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Formato / Jogadores por Time</label>
+            <select id="draw-team-size" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+              <option value="2">2x2 (Praia / Duplas)</option>
+              <option value="3">3x3 (Trio)</option>
+              <option value="4" selected>4x4 (Areia / Quarteto)</option>
+              <option value="5">5x5 (Quinteto)</option>
+              <option value="6">6x6 (Quadra Oficial)</option>
+            </select>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Modo de Aplicação</label>
+            <select id="draw-replace-mode" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+              <option value="replace">Substituir times atuais (Nova Pelada)</option>
+              <option value="append">Adicionar novos times ao fim da fila</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Lista de Jogadores Presentes</label>
+          <textarea id="draw-players-input" rows="3" placeholder="Ex: João, Maria, Carlos, Ana, Rafa, Gabi, Bruno, Léo, Tiago, Paula, Diego, Carla"
+            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none"></textarea>
+        </div>
+
+        <button onclick="runTeamDraw()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-sm transition flex items-center justify-center gap-2">
+          <span>🎲</span> Sortear Times Agora
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- ABA 3: MOTOR CONFIGURÁVEL DE REGRAS DE ALTERNÂNCIA                    -->
+    <!-- ===================================================================== -->
+    <section id="tab-regras" class="tab-content hidden space-y-5">
+
+      <!-- Card 1: Regras de Pontuação do Set -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4">
+        <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+          <span class="text-xl">🎯</span>
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Pontuação do Set</h2>
+            <p class="text-xs text-slate-400">Defina quantos pontos encerram a partida</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1.5">Pontos para Vencer o Set</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button type="button" onclick="setPointsPreset(12)" class="preset-pts-btn py-2.5 rounded-xl border font-bold text-sm transition" data-pts="12">12</button>
+              <button type="button" onclick="setPointsPreset(15)" class="preset-pts-btn py-2.5 rounded-xl border font-bold text-sm transition" data-pts="15">15</button>
+              <button type="button" onclick="setPointsPreset(21)" class="preset-pts-btn py-2.5 rounded-xl border font-bold text-sm transition" data-pts="21">21</button>
+              <button type="button" onclick="setPointsPreset(25)" class="preset-pts-btn py-2.5 rounded-xl border font-bold text-sm transition" data-pts="25">25</button>
+            </div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="text-xs text-slate-400">Outro valor:</span>
+              <input type="number" id="rule-target-points" min="1" max="99" onchange="updateRulesFromUI()"
+                class="w-20 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm font-bold text-center">
+            </div>
+          </div>
+
+          <div class="space-y-2.5">
+            <label class="block text-xs font-bold uppercase text-slate-400">Critério de Fechamento</label>
+            <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer">
+              <input type="checkbox" id="rule-win-by-two" onchange="updateRulesFromUI()" class="mt-1 w-4 h-4 accent-yellow-400">
+              <div>
+                <div class="text-sm font-bold text-white">Exigir "Vai a 2" (Diferença de 2 pts)</div>
+                <div class="text-xs text-slate-400">Se desmarcado, fecha no ponto seco (ex: 15x14).</div>
+              </div>
+            </label>
+
+            <div id="cap-points-wrapper" class="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950/60 border border-slate-800/80">
+              <span class="text-xs text-slate-400">Teto máximo no vai-a-2 (0 = sem teto):</span>
+              <input type="number" id="rule-point-cap" min="0" max="99" onchange="updateRulesFromUI()"
+                class="w-16 px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs font-bold text-center">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Motor de Alternância (Rodízio de Times) -->
+      <div class="bg-slate-900 border-2 border-yellow-400/30 rounded-2xl p-4 sm:p-5 space-y-5 shadow-lg">
+        <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+          <span class="text-2xl">🔄</span>
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Motor de Regras de Alternância</h2>
+            <p class="text-xs text-slate-400">Configure como os times entram e saem da quadra após cada jogo</p>
+          </div>
+        </div>
+
+        <!-- Regra 1: Modo Base -->
+        <div class="space-y-2">
+          <label class="block text-xs font-bold uppercase text-slate-400">1. Regra Base de Permanência</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <label class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer flex items-start gap-3 hover:border-slate-700 transition">
+              <input type="radio" name="rotationMode" value="winner_stays" onchange="updateRulesFromUI()" class="mt-1 accent-yellow-400">
+              <div>
+                <div class="text-sm font-bold text-white">Quem ganha fica (Rei da Quadra)</div>
+                <div class="text-xs text-slate-400">O perdedor sai e dá lugar ao próximo da fila.</div>
+              </div>
+            </label>
+
+            <label class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer flex items-start gap-3 hover:border-slate-700 transition">
+              <input type="radio" name="rotationMode" value="both_leave" onchange="updateRulesFromUI()" class="mt-1 accent-yellow-400">
+              <div>
+                <div class="text-sm font-bold text-white">Ambos os times saem (Rodízio Total)</div>
+                <div class="text-xs text-slate-400">Entram 2 times novos da fila a cada partida.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Regra 2: Limite de Vitórias Consecutivas (Apenas quando winner_stays) -->
+        <div id="consecutive-limit-section" class="space-y-4 pt-3 border-t border-slate-800">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <div class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🔥</span> Limite de Vitórias Seguidas (Vencedor também sai)
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">
+                Evita que um time forte domine a quadra a noite inteira.
+              </p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+              <input type="checkbox" id="rule-limit-wins-enabled" onchange="updateRulesFromUI()" class="sr-only peer">
+              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-400"></div>
+            </label>
+          </div>
+
+          <!-- Detalhes quando o limite de vitórias está ativo -->
+          <div id="limit-wins-details" class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <span class="text-sm font-semibold text-slate-200">Sair após quantas vitórias consecutivas?</span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="adjustMaxWins(-1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white">-</button>
+                <span id="rule-max-wins-display" class="w-10 text-center font-extrabold text-lg text-yellow-400">2</span>
+                <button type="button" onclick="adjustMaxWins(1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 font-bold text-white">+</button>
+              </div>
+            </div>
+
+            <!-- Posição de Retorno do Vencedor que sai por limite -->
+            <div class="space-y-2 pt-2 border-t border-slate-800/80">
+              <label class="block text-xs font-bold uppercase text-yellow-400">
+                Onde o time que saiu por limite de vitórias entra na fila? (Marca sua volta)
+              </label>
+
+              <div class="space-y-2">
+                <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                  <input type="radio" name="winnerReturnPriority" value="before_loser" onchange="updateRulesFromUI()" class="mt-1 accent-yellow-400">
+                  <div>
+                    <div class="text-sm font-bold text-white">Com Vantagem: À frente do perdedor desta partida</div>
+                    <div class="text-xs text-slate-400">Quem estava esperando na fila joga antes, mas o vencedor entra antes do time que acabou de perder.</div>
+                  </div>
+                </label>
+
+                <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                  <input type="radio" name="winnerReturnPriority" value="end_of_queue" onchange="updateRulesFromUI()" class="mt-1 accent-yellow-400">
+                  <div>
+                    <div class="text-sm font-bold text-white">Fim da Fila (Atrás de todos)</div>
+                    <div class="text-xs text-slate-400">O perdedor entra primeiro no fim da fila, e o vencedor que saiu entra logo atrás dele.</div>
+                  </div>
+                </label>
+
+                <label class="flex items-start gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 cursor-pointer hover:border-slate-700">
+                  <input type="radio" name="winnerReturnPriority" value="custom_position" onchange="updateRulesFromUI()" class="mt-1 accent-yellow-400">
+                  <div class="flex-1">
+                    <div class="text-sm font-bold text-white">Posição Fixa na Fila (Marcar volta específica)</div>
+                    <div class="text-xs text-slate-400 mb-2">Escolha em qual posição da fila de espera o vencedor entra:</div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-slate-300 font-semibold">Entrar como:</span>
+                      <select id="rule-custom-return-pos" onchange="updateRulesFromUI()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-xs font-bold text-yellow-400">
+                        <option value="1">1º da fila (Joga logo no próximo jogo!)</option>
+                        <option value="2">2º da fila (Espera só 1 jogo)</option>
+                        <option value="3">3º da fila (Espera 2 jogos)</option>
+                      </select>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regra 3: Empate / Tempo Esgotado -->
+        <div class="space-y-2 pt-3 border-t border-slate-800">
+          <label class="block text-xs font-bold uppercase text-slate-400">3. Em caso de Empate (Encerramento por Tempo)</label>
+          <select id="rule-tie-breaker" onchange="updateRulesFromUI()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:border-yellow-400 focus:outline-none">
+            <option value="both_leave">Ambos os times saem da quadra (Entram 2 novos)</option>
+            <option value="challenger_stays">Desafiante fica (Quem tinha menos vitórias na quadra)</option>
+            <option value="champion_stays">Quem já estava na quadra fica (Vantagem do campeão)</option>
+          </select>
+        </div>
+
+        <!-- Simulador / Explicação Dinâmica da Regra Atual -->
+        <div class="bg-blue-950/40 border border-blue-500/30 rounded-xl p-3.5">
+          <div class="text-xs font-bold uppercase tracking-wider text-blue-300 mb-1">📋 Resumo da Regra Ativa:</div>
+          <p id="rule-live-explanation" class="text-xs sm:text-sm text-slate-200 leading-relaxed">
+            <!-- Preenchido dinamicamente -->
+          </p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- ABA 4: HISTÓRICO & ESTATÍSTICAS DA SESSÃO                             -->
+    <!-- ===================================================================== -->
+    <section id="tab-historico" class="tab-content hidden space-y-5">
+
+      <!-- Tabela de Aproveitamento dos Times -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-white">Classificação da Pelada</h2>
+            <p class="text-xs text-slate-400">Desempenho acumulado na sessão atual</p>
+          </div>
+          <button onclick="openResetSessionModal()" class="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+            Zerar Sessão
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-[11px] font-bold uppercase text-slate-400">
+                <th class="py-2.5 px-2">Time</th>
+                <th class="py-2.5 px-2 text-center">J</th>
+                <th class="py-2.5 px-2 text-center text-emerald-400">V</th>
+                <th class="py-2.5 px-2 text-center text-rose-400">D</th>
+                <th class="py-2.5 px-2 text-center">Pts Pró</th>
+                <th class="py-2.5 px-2 text-center">Saldo</th>
+              </tr>
+            </thead>
+            <tbody id="stats-table-body" class="divide-y divide-slate-800/70 text-sm">
+              <!-- Preenchido via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Histórico Cronológico de Partidas -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <h3 class="text-base font-extrabold text-white">Partidas Encerradas Hoje</h3>
+        <div id="match-history-list" class="space-y-2.5">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ==================== BARRA DE NAVEGAÇÃO INFERIOR (MOBILE) ==================== -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-[#090D16]/95 backdrop-blur-lg border-t border-slate-800 px-2 py-1.5">
+    <div class="grid grid-cols-4 gap-1 max-w-md mx-auto">
+      <button onclick="switchTab('placar')" data-tab="placar" class="nav-btn-mobile flex flex-col items-center justify-center py-2 rounded-xl transition">
+        <span class="text-lg leading-none mb-1">🏐</span>
+        <span class="text-[11px] font-bold">Placar</span>
+      </button>
+      <button onclick="switchTab('times')" data-tab="times" class="nav-btn-mobile flex flex-col items-center justify-center py-2 rounded-xl transition">
+        <span class="text-lg leading-none mb-1">👥</span>
+        <span class="text-[11px] font-bold">Times & Fila</span>
+      </button>
+      <button onclick="switchTab('regras')" data-tab="regras" class="nav-btn-mobile flex flex-col items-center justify-center py-2 rounded-xl transition">
+        <span class="text-lg leading-none mb-1">⚙️</span>
+        <span class="text-[11px] font-bold">Regras</span>
+      </button>
+      <button onclick="switchTab('historico')" data-tab="historico" class="nav-btn-mobile flex flex-col items-center justify-center py-2 rounded-xl transition">
+        <span class="text-lg leading-none mb-1">🏆</span>
+        <span class="text-[11px] font-bold">Histórico</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==================== MODAL 1: FIM DE SET & CONFIRMAÇÃO DE RODÍZIO ==================== -->
+  <div id="modal-end-set" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-yellow-400/50 rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl animate-pop-in space-y-4">
+      <div class="text-center space-y-1">
+        <span class="inline-block px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-300 text-xs font-extrabold uppercase tracking-wider">
+          🏁 Fim de Set Detectado
+        </span>
+        <h3 id="modal-end-title" class="text-2xl font-black text-white">Vitória do Time Azul!</h3>
+        <p id="modal-end-score" class="score-digit text-4xl font-black text-yellow-400">15 x 12</p>
+      </div>
+
+      <!-- Caixa explicando exatamente o que vai acontecer no rodízio -->
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-2.5">
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
+          🔄 Consequência pela Regra Atual:
+        </div>
+        <div id="modal-rotation-preview" class="space-y-2 text-sm text-slate-200">
+          <!-- Preenchido via JS -->
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-2.5 pt-1">
+        <button onclick="confirmMatchEnd()" class="touch-btn w-full py-3.5 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-base shadow-lg shadow-emerald-950/50 transition">
+          ✅ Confirmar & Rodar Times
+        </button>
+        <button onclick="closeEndSetModal()" class="touch-btn w-full py-2.5 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition">
+          Voltar ao Placar (Continuar Jogando)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: ENCERRAMENTO MANUAL / EMPATE ==================== -->
+  <div id="modal-manual-end" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 space-y-4 animate-pop-in">
+      <div>
+        <h3 class="text-lg font-extrabold text-white">Encerrar Partida Manualmente</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Escolha o resultado desta partida para aplicar o rodízio da fila:</p>
+      </div>
+
+      <div class="space-y-2.5">
+        <button onclick="triggerEndWithOutcome(0)" id="manual-win-0" class="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-emerald-950/40 border border-slate-800 hover:border-emerald-500/50 text-left flex items-center justify-between transition">
+          <span class="font-bold text-white text-sm">🏆 Vitória: <span id="manual-name-0">Time A</span></span>
+          <span id="manual-score-0" class="font-mono font-bold text-emerald-400">0 pts</span>
+        </button>
+
+        <button onclick="triggerEndWithOutcome(1)" id="manual-win-1" class="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-emerald-950/40 border border-slate-800 hover:border-emerald-500/50 text-left flex items-center justify-between transition">
+          <span class="font-bold text-white text-sm">🏆 Vitória: <span id="manual-name-1">Time B</span></span>
+          <span id="manual-score-1" class="font-mono font-bold text-emerald-400">0 pts</span>
+        </button>
+
+        <button onclick="triggerEndWithOutcome('tie')" class="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-amber-950/40 border border-slate-800 hover:border-amber-500/50 text-left flex items-center justify-between transition">
+          <span class="font-bold text-amber-300 text-sm">🤝 Empate / Tempo Esgotado</span>
+          <span class="text-xs text-slate-400">Aplica regra de empate</span>
+        </button>
+      </div>
+
+      <button onclick="closeManualEndModal()" class="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">
+        Cancelar
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 3: EDITAR TIME ==================== -->
+  <div id="modal-edit-team" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 space-y-4 animate-pop-in">
+      <h3 class="text-lg font-extrabold text-white">Editar Time</h3>
+      <input type="hidden" id="edit-team-id">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Nome do Time</label>
+          <input type="text" id="edit-team-name" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Cor do Colete</label>
+          <select id="edit-team-color" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+            <option value="#3B82F6">🔵 Azul</option>
+            <option value="#EF4444">🔴 Vermelho</option>
+            <option value="#EAB308">🟡 Amarelo</option>
+            <option value="#10B981">🟢 Verde</option>
+            <option value="#F97316">🟠 Laranja</option>
+            <option value="#A855F7">🟣 Roxo</option>
+            <option value="#EC4899">🩷 Rosa</option>
+            <option value="#F8FAFC">⚪ Branco</option>
+            <option value="#475569">⚫ Preto / Cinza</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Jogadores (separados por vírgula)</label>
+          <input type="text" id="edit-team-players" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeEditTeamModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Cancelar</button>
+        <button onclick="saveEditedTeam()" class="flex-1 py-2.5 rounded-xl bg-yellow-400 text-slate-950 font-extrabold text-sm">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 4: CONFIRMAR RESET DA SESSÃO ==================== -->
+  <div id="modal-reset-session" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-rose-500/40 rounded-3xl max-w-sm w-full p-5 space-y-4 animate-pop-in text-center">
+      <div class="text-3xl">⚠️</div>
+      <h3 class="text-lg font-extrabold text-white">Zerar Estatísticas e Histórico?</h3>
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Isso limpará o histórico de partidas de hoje, zerará as vitórias consecutivas e o placar atual, mantendo os times cadastrados.
+      </p>
+      <div class="flex gap-2 pt-1">
+        <button onclick="closeResetSessionModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm">Cancelar</button>
+        <button onclick="confirmResetSession()" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white font-extrabold text-sm">Sim, Zerar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT: LÓGICA DO APP ==================== -->
+  <script>
+    /**
+     * CHAVE DE ARMAZENAMENTO LOCAL
+     */
+    const STORAGE_KEY = 'volei_pelada_pro_v1';
+
+    /**
+     * PALETA DE CORES DISPONÍVEIS PARA TIMES
+     */
+    const TEAM_COLORS = [
+      { hex: '#3B82F6', label: 'Azul' },
+      { hex: '#EF4444', label: 'Vermelho' },
+      { hex: '#EAB308', label: 'Amarelo' },
+      { hex: '#10B981', label: 'Verde' },
+      { hex: '#F97316', label: 'Laranja' },
+      { hex: '#A855F7', label: 'Roxo' },
+      { hex: '#EC4899', label: 'Rosa' },
+      { hex: '#F8FAFC', label: 'Branco' },
+      { hex: '#475569', label: 'Preto' }
+    ];
+
+    /**
+     * ESTADO INICIAL PADRÃO (PRÉ-CARREGADO COM 4 TIMES PARA TESTE IMEDIATO)
+     */
+    function getDefaultState() {
+      return {
+        activeTab: 'placar',
+        soundEnabled: true,
+        teams: [
+          {
+            id: 'team-1',
+            name: 'Time Azul',
+            color: '#3B82F6',
+            players: ['Lucas', 'Mariana', 'Pedro', 'Bia'],
+            consecutiveWins: 0,
+            stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+          },
+          {
+            id: 'team-2',
+            name: 'Time Vermelho',
+            color: '#EF4444',
+            players: ['Rafael', 'Camila', 'Thiago', 'Juliana'],
+            consecutiveWins: 0,
+            stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+          },
+          {
+            id: 'team-3',
+            name: 'Time Amarelo',
+            color: '#EAB308',
+            players: ['Bruno', 'Fernanda', 'Gustavo', 'Larissa'],
+            consecutiveWins: 0,
+            stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+          },
+          {
+            id: 'team-4',
+            name: 'Time Verde',
+            color: '#10B981',
+            players: ['Diego', 'Amanda', 'Felipe', 'Carolina'],
+            consecutiveWins: 0,
+            stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+          }
+        ],
+        // IDs dos 2 times atualmente em quadra: [Lado Esquerdo, Lado Direito]
+        court: ['team-1', 'team-2'],
+        // IDs dos times na fila de espera (índice 0 = próximo a entrar)
+        queue: ['team-3', 'team-4'],
+        // Estado da partida ao vivo
+        match: {
+          scores: [0, 0],
+          servingSide: 0, // 0 = esquerda, 1 = direita
+          elapsedSeconds: 0,
+          timerRunning: false
+        },
+        // Motor configurável de regras
+        rules: {
+          targetPoints: 15,
+          winByTwo: true,
+          pointCap: 0, // 0 = sem teto
+          rotationMode: 'winner_stays', // 'winner_stays' | 'both_leave'
+          limitWinsEnabled: true,
+          maxConsecutiveWins: 2,
+          winnerReturnPriority: 'before_loser', // 'before_loser' | 'end_of_queue' | 'custom_position'
+          customReturnPos: 1, // 1-based index na fila de espera
+          tieBreaker: 'both_leave' // 'both_leave' | 'challenger_stays' | 'champion_stays'
+        },
+        // Histórico de partidas concluídas
+        history: [],
+        // Objeto temporário para confirmação do fim de partida
+        pendingOutcome: null
+      };
+    }
+
+    let state = loadState();
+    let timerInterval = null;
+
+    /**
+     * CARREGAR E SALVAR NO LOCALSTORAGE
+     */
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultState();
+        const parsed = JSON.parse(raw);
+        // Garante retrocompatibilidade mesclando com default
+        const def = getDefaultState();
+        return {
+          ...def,
+          ...parsed,
+          match: { ...def.match, ...(parsed.match || {}), timerRunning: false },
+          rules: { ...def.rules, ...(parsed.rules || {}) }
+        };
+      } catch (e) {
+        console.error('Erro ao ler localStorage:', e);
+        return getDefaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Erro ao salvar estado:', e);
+      }
+    }
+
+    /**
+     * SINTETIZADOR DE ÁUDIO LEVE (TONE.JS) PARA FEEDBACK TÁTIL
+     */
+    function playSound(type) {
+      if (!state.soundEnabled || typeof Tone === 'undefined') return;
+      try {
+        if (Tone.context.state !== 'running') {
+          Tone.start();
+        }
+        const synth = new Tone.Synth({
+          oscillator: { type: 'triangle' },
+          envelope: { attack: 0.01, decay: 0.12, sustain: 0, release: 0.1 }
+        }).toDestination();
+
+        if (type === 'point') {
+          synth.triggerAttackRelease('C5', '16n');
+        } else if (type === 'minus') {
+          synth.triggerAttackRelease('G3', '16n');
+        } else if (type === 'win') {
+          const now = Tone.now();
+          synth.triggerAttackRelease('C5', '16n', now);
+          synth.triggerAttackRelease('E5', '16n', now + 0.1);
+          synth.triggerAttackRelease('G5', '8n', now + 0.2);
+        }
+      } catch (e) {
+        // Ignora bloqueios de áudio do navegador
+      }
+    }
+
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      saveState();
+      renderSoundIcon();
+      showToast(state.soundEnabled ? '🔊 Efeitos sonoros ativados' : '🔇 Som desativado');
+    }
+
+    function renderSoundIcon() {
+      const on = document.getElementById('icon-sound-on');
+      const off = document.getElementById('icon-sound-off');
+      if (state.soundEnabled) {
+        on.classList.remove('hidden');
+        off.classList.add('hidden');
+      } else {
+        on.classList.add('hidden');
+        off.classList.remove('hidden');
+      }
+    }
+
+    /**
+     * TOAST / NOTIFICAÇÕES NÃO INTRUSIVAS
+     */
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const colors = {
+        info: 'bg-slate-800 border-slate-700 text-white',
+        success: 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200',
+        warning: 'bg-amber-950/95 border-amber-500/50 text-amber-200'
+      };
+      el.className = `px-4 py-2.5 rounded-xl border shadow-xl text-xs sm:text-sm font-bold text-center animate-pop-in ${colors[type] || colors.info}`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s';
+        setTimeout(() => el.remove(), 250);
+      }, 2600);
+    }
+
+    /**
+     * NAVEGAÇÃO ENTRE ABAS
+     */
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      saveState();
+
+      document.querySelectorAll('.tab-content').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById(`tab-${tabName}`);
+      if (target) target.classList.remove('hidden');
+
+      // Atualiza estilos dos botões desktop
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add('bg-yellow-400', 'text-slate-950');
+          btn.classList.remove('text-slate-400', 'hover:text-white');
+        } else {
+          btn.classList.remove('bg-yellow-400', 'text-slate-950');
+          btn.classList.add('text-slate-400', 'hover:text-white');
+        }
+      });
+
+      // Atualiza estilos dos botões mobile
+      document.querySelectorAll('.nav-btn-mobile').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+          btn.classList.add('bg-yellow-400/15', 'text-yellow-400');
+          btn.classList.remove('text-slate-400');
+        } else {
+          btn.classList.remove('bg-yellow-400/15', 'text-yellow-400');
+          btn.classList.add('text-slate-400');
+        }
+      });
+
+      renderAll();
+    }
+
+    /**
+     * AUXILIARES DE BUSCA DE TIMES
+     */
+    function getTeamById(id) {
+      return state.teams.find(t => t.id === id) || null;
+    }
+
+    /**
+     * LÓGICA DO PLACAR AO VIVO
+     */
+    function addPoint(sideIndex, delta) {
+      if (state.court.length < 2) return;
+
+      const currentScore = state.match.scores[sideIndex];
+      const newScore = Math.max(0, currentScore + delta);
+
+      if (newScore === currentScore) return;
+
+      state.match.scores[sideIndex] = newScore;
+
+      // No vôlei (rally point), quem marca o ponto passa a sacar
+      if (delta > 0) {
+        state.match.servingSide = sideIndex;
+        playSound('point');
+      } else {
+        playSound('minus');
+      }
+
+      saveState();
+      renderScoreboard();
+
+      // Verifica se algum time atingiu a condição de vitória do set
+      if (delta > 0) {
+        const winnerSide = checkSetWinner();
+        if (winnerSide !== null) {
+          playSound('win');
+          openEndSetModal(winnerSide);
+        }
+      }
+    }
+
+    function setServe(sideIndex) {
+      state.match.servingSide = sideIndex;
+      saveState();
+      renderScoreboard();
+    }
+
+    function swapSides() {
+      if (state.court.length < 2) return;
+      state.court.reverse();
+      state.match.scores.reverse();
+      state.match.servingSide = state.match.servingSide === 0 ? 1 : 0;
+      saveState();
+      renderScoreboard();
+      showToast('⇄ Lados da quadra invertidos!');
+    }
+
+    function resetCurrentScore() {
+      state.match.scores = [0, 0];
+      state.match.servingSide = 0;
+      resetTimer();
+      saveState();
+      renderScoreboard();
+      showToast('↺ Placar zerado');
+    }
+
+    /**
+     * VERIFICA CONDIÇÃO DE VITÓRIA DO SET (INCLUINDO VAI A 2 E TETO)
+     */
+    function checkSetWinner() {
+      const [s0, s1] = state.match.scores;
+      const target = Number(state.rules.targetPoints) || 15;
+      const winByTwo = Boolean(state.rules.winByTwo);
+      const cap = Number(state.rules.pointCap) || 0;
+
+      // Se existe teto máximo (ex: 17 pontos) e alguém atingiu
+      if (winByTwo && cap > 0 && cap >= target) {
+        if (s0 >= cap && s0 > s1) return 0;
+        if (s1 >= cap && s1 > s0) return 1;
+      }
+
+      if (!winByTwo) {
+        // Ponto seco
+        if (s0 >= target && s0 > s1) return 0;
+        if (s1 >= target && s1 > s0) return 1;
+        return null;
+      } else {
+        // Vai a 2
+        if (s0 >= target && (s0 - s1) >= 2) return 0;
+        if (s1 >= target && (s1 - s0) >= 2) return 1;
+        return null;
+      }
+    }
+
+    /**
+     * VERIFICA SE ALGUM LADO ESTÁ EM SET POINT
+     */
+    function isSetPoint(sideIndex) {
+      const myScore = state.match.scores[sideIndex];
+      const oppScore = state.match.scores[sideIndex === 0 ? 1 : 0];
+      const target = Number(state.rules.targetPoints) || 15;
+      const winByTwo = Boolean(state.rules.winByTwo);
+      const cap = Number(state.rules.pointCap) || 0;
+
+      if (myScore < target - 1) return false;
+      if (winByTwo && cap > 0 && myScore === cap - 1 && oppScore === cap - 1) return true;
+      if (!winByTwo) return myScore === target - 1;
+      return myScore >= target - 1 && (myScore - oppScore) >= 1;
+    }
+
+    /**
+     * CRONÔMETRO DA PARTIDA
+     */
+    function toggleTimer() {
+      if (state.match.timerRunning) {
+        clearInterval(timerInterval);
+        state.match.timerRunning = false;
+      } else {
+        state.match.timerRunning = true;
+        timerInterval = setInterval(() => {
+          state.match.elapsedSeconds++;
+          updateTimerDisplay();
+        }, 1000);
+      }
+      renderTimerControls();
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      state.match.timerRunning = false;
+      state.match.elapsedSeconds = 0;
+      updateTimerDisplay();
+      renderTimerControls();
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(state.match.elapsedSeconds / 60).toString().padStart(2, '0');
+      const secs = (state.match.elapsedSeconds % 60).toString().padStart(2, '0');
+      const el = document.getElementById('timer-display');
+      if (el) el.textContent = `${mins}:${secs}`;
+    }
+
+    function renderTimerControls() {
+      const btn = document.getElementById('btn-timer-toggle');
+      if (!btn) return;
+      btn.textContent = state.match.timerRunning ? 'Pausar' : 'Iniciar';
+      btn.className = state.match.timerRunning
+        ? 'text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold'
+        : 'text-xs px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-yellow-400 font-semibold';
+    }
+
+    /**
+     * =========================================================================
+     * MOTOR DE REGRAS DE ALTERNÂNCIA (CORE DO APLICATIVO)
+     * =========================================================================
+     * Calcula a transição de quadra e fila com base nas regras configuradas,
+     * sem mutar o estado ainda (para permitir pré-visualização no modal).
+     */
+    function computeRotationPlan(outcome) {
+      // outcome: 0 (lado 0 venceu), 1 (lado 1 venceu), ou 'tie' (empate)
+      const [id0, id1] = state.court;
+      const team0 = getTeamById(id0);
+      const team1 = getTeamById(id1);
+      const rules = state.rules;
+      let newQueue = [...state.queue];
+      let newCourt = [...state.court];
+      let notes = [];
+      let exitReason = 'Derrota';
+
+      // Caso 1: Empate (Encerrado por tempo)
+      if (outcome === 'tie') {
+        team0.consecutiveWins = 0;
+        team1.consecutiveWins = 0;
+
+        if (rules.tieBreaker === 'both_leave' || newQueue.length >= 2) {
+          if (rules.tieBreaker === 'both_leave') {
+            exitReason = 'Empate (Ambos saem)';
+            newQueue.push(id0, id1);
+            const nextA = newQueue.shift();
+            const nextB = newQueue.shift();
+            newCourt = [nextA, nextB];
+            notes.push(`🤝 Empate: <strong>${team0.name}</strong> e <strong>${team1.name}</strong> vão para o fim da fila.`);
+            notes.push(`🟢 Entram <strong>${getTeamById(nextA).name}</strong> e <strong>${getTeamById(nextB).name}</strong>.`);
+            return { newCourt, newQueue, notes, exitReason, winnerId: null, loserId: null };
+          }
+        }
+
+        // Desempate por critério de permanência (Desafiante ou Campeão)
+        let staySide = 0;
+        if (rules.tieBreaker === 'challenger_stays') {
+          staySide = team0.consecutiveWins <= team1.consecutiveWins ? 0 : 1;
+          exitReason = 'Empate (Desafiante fica)';
+        } else {
+          staySide = team0.consecutiveWins >= team1.consecutiveWins ? 0 : 1;
+          exitReason = 'Empate (Campeão fica)';
+        }
+
+        const leaveSide = staySide === 0 ? 1 : 0;
+        const stayTeam = getTeamById(state.court[staySide]);
+        const leaveTeam = getTeamById(state.court[leaveSide]);
+
+        newQueue.push(leaveTeam.id);
+        const nextChallengerId = newQueue.shift();
+        newCourt[leaveSide] = nextChallengerId;
+
+        notes.push(`🤝 Empate: <strong>${stayTeam.name}</strong> permanece na quadra.`);
+        notes.push(`🔴 <strong>${leaveTeam.name}</strong> vai para o fim da fila.`);
+        notes.push(`🟢 Entra <strong>${getTeamById(nextChallengerId).name}</strong>.`);
+        return { newCourt, newQueue, notes, exitReason, winnerId: null, loserId: null };
+      }
+
+      // Caso 2: Vitória de um dos lados (0 ou 1)
+      const winnerSide = outcome;
+      const loserSide = winnerSide === 0 ? 1 : 0;
+      const winnerId = state.court[winnerSide];
+      const loserId = state.court[loserSide];
+      const winnerTeam = getTeamById(winnerId);
+      const loserTeam = getTeamById(loserId);
+
+      const projectedWins = winnerTeam.consecutiveWins + 1;
+
+      // Subcaso 2A: Modo "Ambos os times saem" (Rodízio Total)
+      if (rules.rotationMode === 'both_leave') {
+        exitReason = 'Rodízio Total (Ambos saem)';
+        newQueue.push(loserId, winnerId);
+        const nextA = newQueue.shift();
+        const nextB = newQueue.shift();
+        newCourt = [nextA, nextB];
+
+        notes.push(`🔄 Regra de Rodízio Total ativa: ambos os times saem.`);
+        notes.push(`🟢 Entram <strong>${getTeamById(nextA).name}</strong> e <strong>${getTeamById(nextB).name}</strong>.`);
+        notes.push(`⏳ <strong>${winnerTeam.name}</strong> e <strong>${loserTeam.name}</strong> aguardam na fila.`);
+        return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins: 0 };
+      }
+
+      // Subcaso 2B: Modo "Quem ganha fica", mas atingiu o LIMITE DE VITÓRIAS CONSECUTIVAS
+      const hitWinLimit = rules.limitWinsEnabled && projectedWins >= Number(rules.maxConsecutiveWins);
+
+      if (hitWinLimit) {
+        exitReason = `Limite de ${rules.maxConsecutiveWins} vitória(s) atingido`;
+
+        // Primeiro, verifica quantos times existem no total
+        if (newQueue.length === 0) {
+          // Só existem 2 times na pelada inteira: ambos continuam jogando, mas zera sequência
+          notes.push(`🔥 <strong>${winnerTeam.name}</strong> atingiu ${projectedWins} vitórias seguidas!`);
+          notes.push(`ℹ️ Como não há times na fila de espera, ambos continuam jogando com sequência zerada.`);
+          return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins: 0 };
+        }
+
+        if (newQueue.length === 1) {
+          // Há apenas 1 time esperando na fila (total de 3 times na pelada)
+          // Esse 1 time da fila precisa entrar! Quem fica entre vencedor e perdedor?
+          const waitingId = newQueue.shift();
+          const waitingTeam = getTeamById(waitingId);
+
+          if (rules.winnerReturnPriority === 'before_loser' || (rules.winnerReturnPriority === 'custom_position' && Number(rules.customReturnPos) === 1)) {
+            // Vencedor tem prioridade sobre o perdedor, mas como só tem 3 times, o perdedor sai e o vencedor joga com quem esperava (zerando sequência)
+            newQueue.push(loserId);
+            newCourt[loserSide] = waitingId;
+            notes.push(`🔥 <strong>${winnerTeam.name}</strong> completou ${projectedWins} vitórias (sequência zerada).`);
+            notes.push(`🔴 <strong>${loserTeam.name}</strong> sai para dar lugar a <strong>${waitingTeam.name}</strong>.`);
+            return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins: 0 };
+          } else {
+            // Fim da fila: vencedor sai para descansar 1 jogo, perdedor fica contra quem estava esperando!
+            newQueue.push(winnerId);
+            newCourt[winnerSide] = waitingId;
+            notes.push(`🔥 <strong>${winnerTeam.name}</strong> atingiu ${projectedWins} vitórias e sai para o fim da fila!`);
+            notes.push(`🟢 <strong>${waitingTeam.name}</strong> entra em quadra contra <strong>${loserTeam.name}</strong>.`);
+            return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins: 0 };
+          }
+        }
+
+        // Cenário padrão com 4+ times (2 ou mais times na fila de espera):
+        // Ambos os times atuais saem da quadra e entram os 2 primeiros da fila!
+        const nextTeamA = newQueue.shift();
+        const nextTeamB = newQueue.shift();
+        newCourt = [nextTeamA, nextTeamB];
+
+        // Agora aplicamos a regra de ONDE o vencedor que saiu por limite entra na fila (marca sua volta)
+        if (rules.winnerReturnPriority === 'before_loser') {
+          // Vencedor entra na fila ANTES do perdedor desta partida
+          newQueue.push(winnerId);
+          newQueue.push(loserId);
+          const posWinner = newQueue.indexOf(winnerId) + 1;
+          notes.push(`🔥 <strong>${winnerTeam.name}</strong> atingiu ${projectedWins} vitórias seguidas e também sai!`);
+          notes.push(`🎟️ <strong>${winnerTeam.name}</strong> marcou sua volta na <strong>${posWinner}ª posição da fila</strong> (à frente de ${loserTeam.name}).`);
+        } else if (rules.winnerReturnPriority === 'end_of_queue') {
+          // Perdedor entra primeiro no fim da fila, vencedor entra logo atrás dele
+          newQueue.push(loserId);
+          newQueue.push(winnerId);
+          const posWinner = newQueue.indexOf(winnerId) + 1;
+          notes.push(`🔥 <strong>${winnerTeam.name}</strong> atingiu ${projectedWins} vitórias seguidas e vai para o <strong>fim da fila (${posWinner}º)</strong>.`);
+          notes.push(`🔴 <strong>${loserTeam.name}</strong> entra na fila logo à frente dele.`);
+        } else if (rules.winnerReturnPriority === 'custom_position') {
+          // Posição fixa configurada (1º, 2º ou 3º da fila)
+          newQueue.push(loserId);
+          const targetIdx = Math.min(Math.max(0, Number(rules.customReturnPos) - 1), newQueue.length);
+          newQueue.splice(targetIdx, 0, winnerId);
+          notes.push(`🔥 <strong>${winnerTeam.name}</strong> atingiu ${projectedWins} vitórias e saiu.`);
+          notes.push(`⭐ Pela regra de retorno, <strong>${winnerTeam.name}</strong> marcou sua volta como <strong>${targetIdx + 1}º da fila</strong>!`);
+        }
+
+        notes.push(`🟢 Entram em quadra: <strong>${getTeamById(nextTeamA).name}</strong> vs <strong>${getTeamById(nextTeamB).name}</strong>.`);
+
+        return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins: 0 };
+      }
+
+      // Subcaso 2C: Regra Padrão — Vencedor Fica, Perdedor Sai para o Fim da Fila
+      exitReason = 'Derrota';
+      if (newQueue.length === 0) {
+        notes.push(`🏆 <strong>${winnerTeam.name}</strong> venceu! Como não há fila, a revanche começa direto.`);
+        return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins };
+      }
+
+      newQueue.push(loserId);
+      const nextChallengerId = newQueue.shift();
+      newCourt[loserSide] = nextChallengerId;
+
+      notes.push(`🏆 <strong>${winnerTeam.name}</strong> permanece em quadra (${projectedWins}ª vitória seguida).`);
+      notes.push(`🔴 <strong>${loserTeam.name}</strong> vai para o fim da fila.`);
+      notes.push(`🟢 <strong>${getTeamById(nextChallengerId).name}</strong> entra para desafiar!`);
+
+      return { newCourt, newQueue, notes, exitReason, winnerId, loserId, projectedWins };
+    }
+
+    /**
+     * MODAIS DE ENCERRAMENTO E CONFIRMAÇÃO DE PARTIDA
+     */
+    function openEndSetModal(outcome) {
+      state.pendingOutcome = outcome;
+      const [id0, id1] = state.court;
+      const t0 = getTeamById(id0);
+      const t1 = getTeamById(id1);
+      const [s0, s1] = state.match.scores;
+
+      const titleEl = document.getElementById('modal-end-title');
+      const scoreEl = document.getElementById('modal-end-score');
+      const previewEl = document.getElementById('modal-rotation-preview');
+
+      if (outcome === 'tie') {
+        titleEl.textContent = 'Partida Encerrada Empatada!';
+      } else {
+        const winner = outcome === 0 ? t0 : t1;
+        titleEl.textContent = `Vitória: ${winner.name}!`;
+      }
+
+      scoreEl.textContent = `${t0.name} ${s0} × ${s1} ${t1.name}`;
+
+      const plan = computeRotationPlan(outcome);
+      previewEl.innerHTML = plan.notes.map(note => `
+        <div class="flex items-start gap-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800/80 text-xs sm:text-sm leading-snug">
+          <span>${note}</span>
+        </div>
+      `).join('');
+
+      document.getElementById('modal-end-set').classList.remove('hidden');
+    }
+
+    function closeEndSetModal() {
+      state.pendingOutcome = null;
+      document.getElementById('modal-end-set').classList.add('hidden');
+    }
+
+    function openManualEndModal() {
+      if (state.court.length < 2) return;
+      const t0 = getTeamById(state.court[0]);
+      const t1 = getTeamById(state.court[1]);
+      document.getElementById('manual-name-0').textContent = t0.name;
+      document.getElementById('manual-name-1').textContent = t1.name;
+      document.getElementById('manual-score-0').textContent = `${state.match.scores[0]} pts`;
+      document.getElementById('manual-score-1').textContent = `${state.match.scores[1]} pts`;
+      document.getElementById('modal-manual-end').classList.remove('hidden');
+    }
+
+    function closeManualEndModal() {
+      document.getElementById('modal-manual-end').classList.add('hidden');
+    }
+
+    function triggerEndWithOutcome(outcome) {
+      closeManualEndModal();
+      openEndSetModal(outcome);
+    }
+
+    /**
+     * EFETIVA O FIM DA PARTIDA, ATUALIZA ESTATÍSTICAS, HISTÓRICO E FILA
+     */
+    function confirmMatchEnd() {
+      if (state.pendingOutcome === null) return;
+      const outcome = state.pendingOutcome;
+      const [id0, id1] = state.court;
+      const t0 = getTeamById(id0);
+      const t1 = getTeamById(id1);
+      const [s0, s1] = state.match.scores;
+
+      const plan = computeRotationPlan(outcome);
+
+      // Atualiza estatísticas acumuladas
+      t0.stats.played += 1;
+      t1.stats.played += 1;
+      t0.stats.pointsFor += s0;
+      t0.stats.pointsAgainst += s1;
+      t1.stats.pointsFor += s1;
+      t1.stats.pointsAgainst += s0;
+
+      if (outcome === 0) {
+        t0.stats.wins += 1;
+        t1.stats.losses += 1;
+        t0.consecutiveWins = plan.projectedWins;
+        t1.consecutiveWins = 0;
+      } else if (outcome === 1) {
+        t1.stats.wins += 1;
+        t0.stats.losses += 1;
+        t1.consecutiveWins = plan.projectedWins;
+        t0.consecutiveWins = 0;
+      } else {
+        t0.consecutiveWins = 0;
+        t1.consecutiveWins = 0;
+      }
+
+      // Registra no histórico
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      state.history.unshift({
+        id: 'match-' + Date.now(),
+        number: state.history.length + 1,
+        time: timeStr,
+        teamAName: t0.name,
+        teamAColor: t0.color,
+        scoreA: s0,
+        teamBName: t1.name,
+        teamBColor: t1.color,
+        scoreB: s1,
+        winnerName: outcome === 0 ? t0.name : (outcome === 1 ? t1.name : 'Empate'),
+        exitReason: plan.exitReason
+      });
+
+      // Aplica nova quadra e nova fila
+      state.court = plan.newCourt;
+      state.queue = plan.newQueue;
+
+      // Reseta placar para a próxima partida
+      state.match.scores = [0, 0];
+      state.match.servingSide = 0;
+      state.pendingOutcome = null;
+      resetTimer();
+
+      saveState();
+      closeEndSetModal();
+      renderAll();
+      showToast('✅ Rodízio aplicado! Próxima partida pronta.', 'success');
+    }
+
+    /**
+     * =========================================================================
+     * GERENCIAMENTO DE TIMES, FILA E SORTEIO
+     * =========================================================================
+     */
+    function handleAddTeam(e) {
+      e.preventDefault();
+      const nameInput = document.getElementById('new-team-name');
+      const colorInput = document.getElementById('new-team-color');
+      const playersInput = document.getElementById('new-team-players');
+
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const players = playersInput.value
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+      const newTeam = {
+        id: 'team-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        name,
+        color: colorInput.value,
+        players,
+        consecutiveWins: 0,
+        stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+      };
+
+      state.teams.push(newTeam);
+
+      // Se a quadra tiver menos de 2 times, coloca direto na quadra; senão vai para a fila
+      if (state.court.length < 2) {
+        state.court.push(newTeam.id);
+      } else {
+        state.queue.push(newTeam.id);
+      }
+
+      nameInput.value = '';
+      playersInput.value = '';
+
+      saveState();
+      renderAll();
+      showToast(`✅ ${newTeam.name} adicionado!`, 'success');
+    }
+
+    function removeTeam(teamId) {
+      const team = getTeamById(teamId);
+      if (!team) return;
+
+      state.teams = state.teams.filter(t => t.id !== teamId);
+      state.queue = state.queue.filter(id => id !== teamId);
+
+      // Se estava em quadra, puxa o primeiro da fila para repor
+      const courtIdx = state.court.indexOf(teamId);
+      if (courtIdx !== -1) {
+        state.court.splice(courtIdx, 1);
+        if (state.queue.length > 0) {
+          state.court.splice(courtIdx, 0, state.queue.shift());
+        }
+        state.match.scores = [0, 0];
+      }
+
+      saveState();
+      renderAll();
+      showToast(`🗑️ ${team.name} removido.`);
+    }
+
+    function moveQueueItem(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= state.queue.length) return;
+      const temp = state.queue[index];
+      state.queue[index] = state.queue[targetIndex];
+      state.queue[targetIndex] = temp;
+      saveState();
+      renderAll();
+    }
+
+    function swapCourtWithFirstQueue(courtSideIndex) {
+      if (state.queue.length === 0) {
+        showToast('Não há times na fila para trocar.', 'warning');
+        return;
+      }
+      const leavingId = state.court[courtSideIndex];
+      const enteringId = state.queue.shift();
+      const leavingTeam = getTeamById(leavingId);
+      if (leavingTeam) leavingTeam.consecutiveWins = 0;
+
+      state.court[courtSideIndex] = enteringId;
+      state.queue.unshift(leavingId);
+      state.match.scores = [0, 0];
+
+      saveState();
+      renderAll();
+      showToast('🔄 Troca manual realizada!');
+    }
+
+    function openEditTeamModal(teamId) {
+      const team = getTeamById(teamId);
+      if (!team) return;
+      document.getElementById('edit-team-id').value = team.id;
+      document.getElementById('edit-team-name').value = team.name;
+      document.getElementById('edit-team-color').value = team.color;
+      document.getElementById('edit-team-players').value = (team.players || []).join(', ');
+      document.getElementById('modal-edit-team').classList.remove('hidden');
+    }
+
+    function closeEditTeamModal() {
+      document.getElementById('modal-edit-team').classList.add('hidden');
+    }
+
+    function saveEditedTeam() {
+      const id = document.getElementById('edit-team-id').value;
+      const team = getTeamById(id);
+      if (!team) return;
+
+      const newName = document.getElementById('edit-team-name').value.trim();
+      if (newName) team.name = newName;
+      team.color = document.getElementById('edit-team-color').value;
+      team.players = document.getElementById('edit-team-players').value
+        .split(',')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+      saveState();
+      closeEditTeamModal();
+      renderAll();
+      showToast('✅ Time atualizado!');
+    }
+
+    /**
+     * SORTEADOR AUTOMÁTICO DE TIMES (FISHER-YATES SHUFFLE)
+     */
+    function runTeamDraw() {
+      const rawPlayers = document.getElementById('draw-players-input').value;
+      const players = rawPlayers
+        .split(/[\n,;]+/)
+        .map(p => p.trim())
+        .filter(Boolean);
+
+      if (players.length < 2) {
+        showToast('⚠️ Digite pelo menos 2 nomes para sortear!', 'warning');
+        return;
+      }
+
+      const teamSize = Number(document.getElementById('draw-team-size').value) || 4;
+      const replaceMode = document.getElementById('draw-replace-mode').value;
+
+      // Embaralhamento Fisher-Yates
+      for (let i = players.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [players[i], players[j]] = [players[j], players[i]];
+      }
+
+      const generatedTeams = [];
+      let colorOffset = replaceMode === 'replace' ? 0 : state.teams.length;
+
+      for (let i = 0; i < players.length; i += teamSize) {
+        const chunk = players.slice(i, i + teamSize);
+        const colorObj = TEAM_COLORS[(colorOffset + generatedTeams.length) % TEAM_COLORS.length];
+        generatedTeams.push({
+          id: 'team-' + Date.now() + '-' + generatedTeams.length,
+          name: `Time ${colorObj.label}`,
+          color: colorObj.hex,
+          players: chunk,
+          consecutiveWins: 0,
+          stats: { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }
+        });
+      }
+
+      if (replaceMode === 'replace') {
+        state.teams = generatedTeams;
+        state.court = generatedTeams.slice(0, 2).map(t => t.id);
+        state.queue = generatedTeams.slice(2).map(t => t.id);
+        state.match.scores = [0, 0];
+        state.match.servingSide = 0;
+        resetTimer();
+      } else {
+        generatedTeams.forEach(t => {
+          state.teams.push(t);
+          if (state.court.length < 2) {
+            state.court.push(t.id);
+          } else {
+            state.queue.push(t.id);
+          }
+        });
+      }
+
+      saveState();
+      renderAll();
+      showToast(`🎲 ${generatedTeams.length} times sorteados com sucesso!`, 'success');
+    }
+
+    /**
+     * =========================================================================
+     * CONTROLES DO PAINEL DE REGRAS
+     * =========================================================================
+     */
+    function setPointsPreset(pts) {
+      state.rules.targetPoints = pts;
+      document.getElementById('rule-target-points').value = pts;
+      saveState();
+      renderRulesUI();
+      renderScoreboard();
+    }
+
+    function adjustMaxWins(delta) {
+      const next = Math.min(10, Math.max(1, Number(state.rules.maxConsecutiveWins) + delta));
+      state.rules.maxConsecutiveWins = next;
+      saveState();
+      renderRulesUI();
+      renderScoreboard();
+    }
+
+    function updateRulesFromUI() {
+      const targetPts = Number(document.getElementById('rule-target-points').value);
+      if (targetPts >= 1 && targetPts <= 99) {
+        state.rules.targetPoints = targetPts;
+      }
+
+      state.rules.winByTwo = document.getElementById('rule-win-by-two').checked;
+      state.rules.pointCap = Math.max(0, Number(document.getElementById('rule-point-cap').value) || 0);
+
+      const modeRadio = document.querySelector('input[name="rotationMode"]:checked');
+      if (modeRadio) state.rules.rotationMode = modeRadio.value;
+
+      state.rules.limitWinsEnabled = document.getElementById('rule-limit-wins-enabled').checked;
+
+      const returnRadio = document.querySelector('input[name="winnerReturnPriority"]:checked');
+      if (returnRadio) state.rules.winnerReturnPriority = returnRadio.value;
+
+      state.rules.customReturnPos = Number(document.getElementById('rule-custom-return-pos').value) || 1;
+      state.rules.tieBreaker = document.getElementById('rule-tie-breaker').value;
+
+      saveState();
+      renderRulesUI();
+      renderScoreboard();
+    }
+
+    /**
+     * RESETAR SESSÃO
+     */
+    function openResetSessionModal() {
+      document.getElementById('modal-reset-session').classList.remove('hidden');
+    }
+
+    function closeResetSessionModal() {
+      document.getElementById('modal-reset-session').classList.add('hidden');
+    }
+
+    function confirmResetSession() {
+      state.history = [];
+      state.teams.forEach(t => {
+        t.consecutiveWins = 0;
+        t.stats = { played: 0, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
+      });
+      state.match.scores = [0, 0];
+      state.match.servingSide = 0;
+      resetTimer();
+      saveState();
+      closeResetSessionModal();
+      renderAll();
+      showToast('🔄 Estatísticas e histórico zerados!');
+    }
+
+    /**
+     * =========================================================================
+     * RENDERIZAÇÃO DA INTERFACE (UI)
+     * =========================================================================
+     */
+    function renderAll() {
+      renderSoundIcon();
+      renderRulesUI();
+      renderScoreboard();
+      renderTeamsAndQueue();
+      renderHistoryAndStats();
+    }
+
+    function renderScoreboard() {
+      const rules = state.rules;
+      // Atualiza cabeçalho e meta do set
+      const limitText = rules.rotationMode === 'both_leave'
+        ? 'Ambos saem'
+        : (rules.limitWinsEnabled ? `Sai após ${rules.maxConsecutiveWins} vit.` : 'Rei da quadra livre');
+
+      document.getElementById('header-rule-summary').textContent = `Set ${rules.targetPoints} pts • ${limitText}`;
+      document.getElementById('match-number').textContent = state.history.length + 1;
+      document.getElementById('set-target-badge').textContent = `Meta: ${rules.targetPoints} pts (${rules.winByTwo ? 'Vai a 2' : 'Ponto seco'})`;
+
+      const alertEl = document.getElementById('not-enough-teams-alert');
+      const arenaEl = document.getElementById('scoreboard-arena');
+
+      if (state.court.length < 2) {
+        alertEl.classList.remove('hidden');
+        arenaEl.classList.add('hidden');
+        return;
+      }
+
+      alertEl.classList.add('hidden');
+      arenaEl.classList.remove('hidden');
+
+      [0, 1].forEach(side => {
+        const team = getTeamById(state.court[side]);
+        if (!team) return;
+
+        const card = document.getElementById(`card-side-${side}`);
+        const badgeColor = document.getElementById(`badge-color-${side}`);
+        const nameEl = document.getElementById(`name-side-${side}`);
+        const scoreEl = document.getElementById(`score-side-${side}`);
+        const serveBtn = document.getElementById(`serve-btn-${side}`);
+        const streakTag = document.getElementById(`streak-tag-${side}`);
+        const setPointEl = document.getElementById(`setpoint-${side}`);
+
+        badgeColor.style.backgroundColor = team.color;
+        nameEl.textContent = team.name;
+        scoreEl.textContent = state.match.scores[side];
+
+        // Borda destacada sutilmente com a cor do time quando está sacando
+        const isServing = state.match.servingSide === side;
+        if (isServing) {
+          card.style.borderColor = team.color;
+          serveBtn.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-1 bg-yellow-400 text-slate-950 shadow';
+          serveBtn.innerHTML = '🏐 Sacando';
+        } else {
+          card.style.borderColor = '#1E293B';
+          serveBtn.className = 'px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide flex items-center gap-1 bg-slate-800/80 text-slate-400 hover:text-white';
+          serveBtn.innerHTML = 'Recepção';
+        }
+
+        // Badge de Sequência de Vitórias / Status na Quadra
+        if (rules.rotationMode === 'both_leave') {
+          streakTag.className = 'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-blue-500/15 text-blue-300';
+          streakTag.textContent = '🔄 Rodízio: ambos saem no fim';
+        } else if (rules.limitWinsEnabled) {
+          const maxW = Number(rules.maxConsecutiveWins);
+          const curW = team.consecutiveWins;
+          const remaining = maxW - curW;
+
+          if (curW === 0) {
+            streakTag.className = 'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-300';
+            streakTag.textContent = `🆕 Novo na quadra (0/${maxW} vit.)`;
+          } else if (remaining <= 1) {
+            streakTag.className = 'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-extrabold bg-amber-500/20 border border-amber-500/40 text-amber-300';
+            streakTag.textContent = `🔥 ${curW}ª vit. — Joga pela última e sai!`;
+          } else {
+            streakTag.className = 'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-emerald-500/20 text-emerald-300';
+            streakTag.textContent = `🔥 ${curW}ª vitória seguida (${curW}/${maxW})`;
+          }
+        } else {
+          streakTag.className = 'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300';
+          streakTag.textContent = team.consecutiveWins > 0
+            ? `👑 ${team.consecutiveWins} vitória(s) seguida(s)`
+            : '🆕 Desafiante na quadra';
+        }
+
+        // Indicador de Set Point
+        if (isSetPoint(side)) {
+          setPointEl.classList.remove('hidden');
+        } else {
+          setPointEl.classList.add('hidden');
+        }
+      });
+
+      // Preview da fila na aba Placar
+      const previewContainer = document.getElementById('scoreboard-queue-preview');
+      if (state.queue.length === 0) {
+        previewContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Nenhum time aguardando na fila.</span>`;
+      } else {
+        previewContainer.innerHTML = state.queue.map((id, idx) => {
+          const t = getTeamById(id);
+          if (!t) return '';
+          return `
+            <div class="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border ${idx === 0 ? 'border-yellow-400/50' : 'border-slate-800'}">
+              <span class="text-xs font-black ${idx === 0 ? 'text-yellow-400' : 'text-slate-500'}">${idx + 1}º</span>
+              <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${t.color}"></span>
+              <span class="text-xs font-bold text-slate-200">${t.name}</span>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function renderTeamsAndQueue() {
+      document.getElementById('total-teams-badge').textContent = `${state.teams.length} Time(s)`;
+
+      // 1. Renderiza Times em Quadra
+      const courtList = document.getElementById('court-teams-list');
+      if (state.court.length === 0) {
+        courtList.innerHTML = `<p class="text-xs text-slate-500">Nenhum time em quadra.</p>`;
+      } else {
+        courtList.innerHTML = state.court.map((id, idx) => {
+          const t = getTeamById(id);
+          if (!t) return '';
+          return `
+            <div class="p-3.5 rounded-2xl bg-slate-950 border border-emerald-500/30 flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="w-3.5 h-3.5 rounded-full flex-shrink-0" style="background-color: ${t.color}"></span>
+                  <span class="font-extrabold text-sm text-white truncate">${t.name}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">
+                    ${idx === 0 ? 'Lado Esq.' : 'Lado Dir.'}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-400 truncate mt-1">
+                  ${t.players && t.players.length ? t.players.join(', ') : 'Sem jogadores listados'}
+                </p>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <button onclick="swapCourtWithFirstQueue(${idx})" title="Trocar com 1º da fila" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-yellow-400 font-bold">
+                  ⇄
+                </button>
+                <button onclick="openEditTeamModal('${t.id}')" title="Editar time" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300">
+                  ✏️
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 2. Renderiza Fila de Espera
+      const queueList = document.getElementById('waiting-queue-list');
+      if (state.queue.length === 0) {
+        queueList.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-950/60 border border-dashed border-slate-800 text-center text-xs text-slate-400">
+            A fila de espera está vazia. Cadastre mais times abaixo!
+          </div>
+        `;
+      } else {
+        queueList.innerHTML = state.queue.map((id, idx) => {
+          const t = getTeamById(id);
+          if (!t) return '';
+          return `
+            <div class="p-3 rounded-2xl bg-slate-950 border ${idx === 0 ? 'border-yellow-400/40' : 'border-slate-800'} flex items-center justify-between gap-2">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 ${idx === 0 ? 'bg-yellow-400 text-slate-950' : 'bg-slate-800 text-slate-300'}">
+                  ${idx + 1}º
+                </span>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${t.color}"></span>
+                    <span class="font-bold text-sm text-white truncate">${t.name}</span>
+                    ${idx === 0 ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-300 font-bold">Próximo</span>' : ''}
+                  </div>
+                  <p class="text-xs text-slate-400 truncate mt-0.5">
+                    ${t.players && t.players.length ? t.players.join(', ') : 'Sem jogadores listados'}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Controles de Ordem, Edição e Exclusão -->
+              <div class="flex items-center gap-1 flex-shrink-0">
+                <button onclick="moveQueueItem(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs text-white font-bold" title="Subir na fila">
+                  ↑
+                </button>
+                <button onclick="moveQueueItem(${idx}, 1)" ${idx === state.queue.length - 1 ? 'disabled' : ''} class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-xs text-white font-bold" title="Descer na fila">
+                  ↓
+                </button>
+                <button onclick="openEditTeamModal('${t.id}')" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300" title="Editar">
+                  ✏️
+                </button>
+                <button onclick="removeTeam('${t.id}')" class="p-2 rounded-lg bg-slate-800 hover:bg-rose-950 text-xs text-rose-400" title="Remover time">
+                  ✕
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function renderRulesUI() {
+      const r = state.rules;
+      document.getElementById('rule-target-points').value = r.targetPoints;
+      document.getElementById('rule-win-by-two').checked = r.winByTwo;
+      document.getElementById('rule-point-cap').value = r.pointCap;
+
+      // Botões preset de pontos
+      document.querySelectorAll('.preset-pts-btn').forEach(btn => {
+        if (Number(btn.dataset.pts) === Number(r.targetPoints)) {
+          btn.className = 'preset-pts-btn py-2.5 rounded-xl border border-yellow-400 bg-yellow-400/20 text-yellow-300 font-extrabold text-sm transition';
+        } else {
+          btn.className = 'preset-pts-btn py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 hover:text-white font-bold text-sm transition';
+        }
+      });
+
+      // Mostra/esconde teto do vai-a-2
+      const capWrap = document.getElementById('cap-points-wrapper');
+      capWrap.style.opacity = r.winByTwo ? '1' : '0.4';
+
+      // Radio rotationMode
+      const rotRadio = document.querySelector(`input[name="rotationMode"][value="${r.rotationMode}"]`);
+      if (rotRadio) rotRadio.checked = true;
+
+      // Seção de limite de vitórias
+      const limitSec = document.getElementById('consecutive-limit-section');
+      const limitDetails = document.getElementById('limit-wins-details');
+      document.getElementById('rule-limit-wins-enabled').checked = r.limitWinsEnabled;
+      document.getElementById('rule-max-wins-display').textContent = r.maxConsecutiveWins;
+
+      if (r.rotationMode === 'both_leave') {
+        limitSec.classList.add('hidden');
+      } else {
+        limitSec.classList.remove('hidden');
+        if (r.limitWinsEnabled) {
+          limitDetails.classList.remove('hidden');
+        } else {
+          limitDetails.classList.add('hidden');
+        }
+      }
+
+      // Radio winnerReturnPriority
+      const retRadio = document.querySelector(`input[name="winnerReturnPriority"][value="${r.winnerReturnPriority}"]`);
+      if (retRadio) retRadio.checked = true;
+
+      document.getElementById('rule-custom-return-pos').value = r.customReturnPos;
+      document.getElementById('rule-tie-breaker').value = r.tieBreaker;
+
+      // Gera texto explicativo dinâmico
+      let exp = `Partidas de <strong>${r.targetPoints} pontos</strong> (${r.winByTwo ? 'com diferença de 2 pontos' : 'ponto seco'}). `;
+      if (r.rotationMode === 'both_leave') {
+        exp += `Ao final de cada set, <strong>ambos os times saem</strong> e entram 2 times novos da fila.`;
+      } else if (!r.limitWinsEnabled) {
+        exp += `<strong>Quem ganha fica</strong> sem limite de vitórias; o perdedor vai para o fim da fila.`;
+      } else {
+        exp += `<strong>Quem ganha fica</strong> até completar <strong>${r.maxConsecutiveWins} vitória(s) seguida(s)</strong>. Ao atingir esse limite, o campeão também sai e `;
+        if (r.winnerReturnPriority === 'before_loser') {
+          exp += `<strong>marca sua volta à frente do perdedor</strong> desta partida.`;
+        } else if (r.winnerReturnPriority === 'end_of_queue') {
+          exp += `entra no <strong>fim da fila</strong> (atrás do perdedor).`;
+        } else {
+          exp += `entra diretamente como <strong>${r.customReturnPos}º da fila de espera</strong>.`;
+        }
+      }
+      document.getElementById('rule-live-explanation').innerHTML = exp;
+    }
+
+    function renderHistoryAndStats() {
+      // 1. Tabela de Classificação
+      const tbody = document.getElementById('stats-table-body');
+      const sortedTeams = [...state.teams].sort((a, b) => {
+        if (b.stats.wins !== a.stats.wins) return b.stats.wins - a.stats.wins;
+        const diffA = a.stats.pointsFor - a.stats.pointsAgainst;
+        const diffB = b.stats.pointsFor - b.stats.pointsAgainst;
+        return diffB - diffA;
+      });
+
+      tbody.innerHTML = sortedTeams.map(t => {
+        const diff = t.stats.pointsFor - t.stats.pointsAgainst;
+        const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+        return `
+          <tr class="hover:bg-slate-800/30">
+            <td class="py-2.5 px-2 font-bold text-white flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${t.color}"></span>
+              <span class="truncate max-w-[130px] sm:max-w-[200px]">${t.name}</span>
+            </td>
+            <td class="py-2.5 px-2 text-center text-slate-300 font-semibold">${t.stats.played}</td>
+            <td class="py-2.5 px-2 text-center text-emerald-400 font-extrabold">${t.stats.wins}</td>
+            <td class="py-2.5 px-2 text-center text-rose-400 font-semibold">${t.stats.losses}</td>
+            <td class="py-2.5 px-2 text-center text-slate-300">${t.stats.pointsFor}</td>
+            <td class="py-2.5 px-2 text-center font-bold ${diff >= 0 ? 'text-slate-200' : 'text-rose-400'}">${diffStr}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // 2. Lista de Partidas Encerradas
+      const histList = document.getElementById('match-history-list');
+      if (state.history.length === 0) {
+        histList.innerHTML = `
+          <div class="p-6 rounded-2xl bg-slate-950/60 border border-dashed border-slate-800 text-center text-xs text-slate-400">
+            Nenhuma partida encerrada ainda nesta sessão.
+          </div>
+        `;
+      } else {
+        histList.innerHTML = state.history.map(m => `
+          <div class="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span class="font-bold text-slate-300">Jogo #${m.number} • ${m.time}</span>
+              <span class="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-yellow-400 font-semibold">
+                ${m.exitReason}
+              </span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${m.teamAColor}"></span>
+                <span class="text-sm font-bold truncate ${m.scoreA > m.scoreB ? 'text-white' : 'text-slate-400'}">${m.teamAName}</span>
+              </div>
+              <div class="px-3 py-1 rounded-xl bg-slate-900 font-display text-xl font-black text-white tracking-wider">
+                ${m.scoreA} × ${m.scoreB}
+              </div>
+              <div class="flex items-center justify-end gap-2 flex-1 min-w-0">
+                <span class="text-sm font-bold truncate ${m.scoreB > m.scoreA ? 'text-white' : 'text-slate-400'}">${m.teamBName}</span>
+                <span class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: ${m.teamBColor}"></span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    /**
+     * INICIALIZAÇÃO DO APLICATIVO
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      switchTab(state.activeTab || 'placar');
+      updateTimerDisplay();
+      renderTimerControls();
+    });
+  </script>
+</body>
+</html>
