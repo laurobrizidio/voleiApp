@@ -7,21 +7,33 @@ plugins {
     alias(libs.plugins.hilt)
 }
 android {
-    namespace = "br.com.voleipelada"
-    compileSdk = 35
-    buildToolsVersion = "35.0.0"
+    namespace = "br.com.voleipro"
+    compileSdk = 36
+    buildToolsVersion = "36.0.0"
     defaultConfig {
-        applicationId = "br.com.voleipelada"
+        applicationId = "br.com.voleipro"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
+        targetSdk = 36
+        versionCode = 2
         versionName = "1.0"
+    }
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
     }
     buildFeatures { compose = true }
     testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+androidComponents {
+    beforeVariants { variant ->
+        variant.deviceTests.values.forEach { it.enable = false }
     }
 }
 kotlin { compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) } }
